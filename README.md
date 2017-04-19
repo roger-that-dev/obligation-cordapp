@@ -1,9 +1,14 @@
 ![Corda](https://www.corda.net/wp-content/uploads/2016/11/fg005_corda_b.png)
 
-# Corda Training Solutions
+# IOU CorDapp Version 2.
 
-This repo contains all the solutions for the practical exercises of the Corda two day 
-training course. 
+This repo contains an updated version of the original IOU Cordapp. The following features have been added:
+
+* The code has been rebased to Corda M10.1
+* Nodes can self issue cash
+* Nodes can transfer IOUs to other nodes (this is a demonstration of a 3 Party flow)
+* Node's can fully or partially settle IOUs with the self issued cash (Either GBP, USD, or CHF)
+* The web UI has been updated to facilitate transferance and settlement of IOUs
 
 # Pre-requisites:
   
@@ -11,26 +16,25 @@ training course.
 * IntelliJ latest version (2017.1) (as of writing)
 * git
 
-# Solution files
+# Usage
 
-State solution:
+## Running the nodes:
 
-* [`IOUState.kt`](https://github.com/roger3cev/corda-training-solutions/blob/master/src/main/kotlin/net/corda/training/state/IOUState.kt)
+* Ensure Oracle JDK 1.8 is installed.
+* `cd` to the directory where you want to clone this repo
+* `git clone http://github.com/roger3cev/iou-cordapp-v2`
+* `cd iou-cordapp-v2`
+* `./gradlew deployNodes`
+* `cd build/nodes`
+* `./runnodes`
 
-Contract solution:
+## Using the CorDapp:
 
-* [`IOUContract.kt`](https://github.com/roger3cev/corda-training-solutions/blob/master/src/main/kotlin/net/corda/training/contract/IOUContract.kt)
+Via the web: 
 
-Flow solutions:
+Navigate to http://localhost:PORT/web/iou to use the web interface where PORT typically starts at 10007 for NodeA, double check the node terminal window or the build.gradle file for port numbers.
 
-* Issue: [`IOUIssueFlow.kt`](https://github.com/roger3cev/corda-training-solutions/blob/master/src/main/kotlin/net/corda/training/flow/IOUIssueFlow.kt)
-* Transfer: [`IOUTransferFlow.kt`](https://github.com/roger3cev/corda-training-solutions/blob/master/src/main/kotlin/net/corda/training/flow/IOUTransferFlow.kt)
-* Settle: [`IOUSettleFlow.kt`](https://github.com/roger3cev/corda-training-solutions/blob/master/src/main/kotlin/net/corda/training/flow/IOUSettleFlow.kt)
+Via the node shell from any node which is not the **Controller**: 
 
-The code in the following files was already added for you:
-
-* [`SignTransactionFlow.kt`](https://github.com/roger3cev/corda-training-solutions/blob/master/src/main/kotlin/net/corda/training/flow/SignTransactionFlow.kt)
-* [`SelfIssueCashFlow.kt`](https://github.com/roger3cev/corda-training-solutions/blob/master/src/main/kotlin/net/corda/training/flow/SelfIssueCashFlow.kt)
-* [`IOUApi.kt`](https://github.com/roger3cev/corda-training-solutions/blob/master/src/main/kotlin/net/corda/training/api/IOUApi.kt)
-* [`IOUClient.kt`](https://github.com/roger3cev/corda-training-solutions/blob/master/src/main/kotlin/net/corda/training/client/IOUClient.kt)
-* [`IOUPlugin.kt`](https://github.com/roger3cev/corda-training-solutions/blob/master/src/main/kotlin/net/corda/training/plugin/IOUPlugin.kt)
+1. Use `flow start SelfIssueCashFlow amount: X, currency: GBP` to issue cash.
+2. Use `
