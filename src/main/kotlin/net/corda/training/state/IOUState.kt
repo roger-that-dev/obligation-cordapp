@@ -3,8 +3,8 @@ package net.corda.training.state
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.LinearState
 import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.crypto.Party
 import net.corda.core.crypto.CompositeKey
+import net.corda.core.crypto.Party
 import net.corda.core.crypto.keys
 import net.corda.training.contract.IOUContract
 import java.security.PublicKey
@@ -42,21 +42,23 @@ data class IOUState(val amount: Amount<Currency>,
     override val participants: List<CompositeKey> get() = listOf(lender.owningKey, borrower.owningKey)
 
     /**
-     * A toString() helper method for displaying IOUs in the console.
-     */
-    override fun toString() = "IOU($linearId): ${borrower.name} owes ${lender.name} $amount and has paid $paid so far."
-
-    /**
      * A Contract code reference to the IOUContract. Make sure this is not part of the [IOUState] constructor, if it is
      * then equality won't work property on this state type. ** Don't change this property! **
      */
     override val contract get() = IOUContract()
 
     /**
-     * Helper methods for when building transactions for settling and transferring IOUs.
-     * - [pay] adds an amount to the paid property. It does no validation.
-     * - [withNewLender] creates a copy of the current state with a newly specified lender. For use when transferring.
+     * Helper method which creates a new state with the [paid] amount incremented by [amountToPay]. No validation is performed.
      */
-    fun pay(amountToPay: Amount<Currency>) = copy(paid = paid.plus(amountToPay))
+    fun pay(amountToPay: Amount<Currency>) = copy(paid = paid + amountToPay)
+
+    /**
+     * Helper method which creates a copy of the current state with a newly specified lender. For use when transferring.
+     */
     fun withNewLender(newLender: Party) = copy(lender = newLender)
+
+    /**
+     * A toString() helper method for displaying IOUs in the console.
+     */
+    override fun toString() = "IOU($linearId): ${borrower.name} owes ${lender.name} $amount and has paid $paid so far."
 }

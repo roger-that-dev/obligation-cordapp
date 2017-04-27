@@ -1,18 +1,24 @@
 package net.corda.training.api
 
+import net.corda.client.rpc.notUsed
 import net.corda.contracts.asset.Cash
 import net.corda.core.contracts.Amount
+import net.corda.core.contracts.ContractState
+import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
+import net.corda.core.getOrThrow
 import net.corda.core.messaging.CordaRPCOps
-import net.corda.core.utilities.loggerFor
 import net.corda.training.flow.IOUIssueFlow
 import net.corda.training.flow.IOUSettleFlow
 import net.corda.training.flow.IOUTransferFlow
 import net.corda.training.flow.SelfIssueCashFlow
 import net.corda.training.state.IOUState
-import org.slf4j.Logger
+import rx.Observable
 import java.util.*
-import javax.ws.rs.*
+import javax.ws.rs.GET
+import javax.ws.rs.Path
+import javax.ws.rs.Produces
+import javax.ws.rs.QueryParam
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 
@@ -25,10 +31,6 @@ val SERVICE_NODE_NAMES = listOf("Controller", "NetworkMapService")
 @Path("iou")
 class IOUApi(val services: CordaRPCOps) {
     private val myLegalName: String = services.nodeIdentity().legalIdentity.name
-
-    companion object {
-        private val logger: Logger = loggerFor<IOUApi>()
-    }
 
     /**
      * Returns the node's name.
@@ -45,9 +47,13 @@ class IOUApi(val services: CordaRPCOps) {
     @GET
     @Path("peers")
     @Produces(MediaType.APPLICATION_JSON)
-    fun getPeers() = mapOf("peers" to services.networkMapUpdates().first
-            .map { it.legalIdentity.name }
-            .filter { it != myLegalName && it !in SERVICE_NODE_NAMES })
+    fun getPeers(): Map<String, List<String>> {
+        val peers = services.networkMapUpdates()
+                .justSnapshot
+                .map { it.legalIdentity.name }
+                .filter { it != myLegalName && it !in SERVICE_NODE_NAMES }
+        return mapOf("peers" to peers)
+    }
 
     /**
      * Displays all IOU states that exist in the node's vault.
@@ -56,7 +62,9 @@ class IOUApi(val services: CordaRPCOps) {
     @Path("ious")
     @Produces(MediaType.APPLICATION_JSON)
     // Filter by state type: IOU.
-    fun getIOUs() = services.vaultAndUpdates().first.filter { it.state.data is IOUState }
+    fun getIOUs(): List<StateAndRef<ContractState>> {
+        return services.vaultAndUpdates().justSnapshot.filter { it.state.data is IOUState }
+    }
 
     /**
      * Displays all cash states that exist in the node's vault.
@@ -65,7 +73,9 @@ class IOUApi(val services: CordaRPCOps) {
     @Path("cash")
     @Produces(MediaType.APPLICATION_JSON)
     // Filter by state type: Cash.
-    fun getCash() = services.vaultAndUpdates().first.filter { it.state.data is Cash.State }
+    fun getCash(): List<StateAndRef<ContractState>> {
+        return services.vaultAndUpdates().justSnapshot.filter { it.state.data is Cash.State }
+    }
 
     /**
      * Displays all cash states that exist in the node's vault.
@@ -74,7 +84,7 @@ class IOUApi(val services: CordaRPCOps) {
     @Path("cash-balances")
     @Produces(MediaType.APPLICATION_JSON)
     // Display cash balances.
-    fun getCashBalances() = services.getCashBalances()
+    fun getCashBalances(): Map<Currency, Amount<Currency>> = services.getCashBalances()
 
     /**
      * Initiates a flow to agree an IOU between two parties.
@@ -89,21 +99,19 @@ class IOUApi(val services: CordaRPCOps) {
         val lender = services.partyFromName(party) ?: throw IllegalArgumentException("Unknown party name.")
         // Create a new IOU state using the parameters given.
         val state = IOUState(Amount(amount.toLong() * 100, Currency.getInstance(currency)), lender, me)
-        // Start the IOUIssueFlow. We block and waits for the flow to return.
-        try {
-            val result = services.startFlowDynamic(IOUIssueFlow::class.java, state, lender).returnValue.get()
+
+        // Start the IOUIssueFlow. We block and wait for the flow to return.
+        val (status, message) = try {
+            val flowHandle = services.startFlowDynamic(IOUIssueFlow::class.java, state, lender)
+            val result = flowHandle.use { it.returnValue.getOrThrow() }
             // Return the response.
-            return Response
-                    .status(Response.Status.CREATED)
-                    .entity("Transaction id ${result.id} committed to ledger.\n${result.tx.outputs.single()}")
-                    .build()
-        // For the purposes of this demo app, we do not differentiate by exception type.
+            Response.Status.CREATED to "Transaction id ${result.id} committed to ledger.\n${result.tx.outputs.single()}"
         } catch (e: Exception) {
-            return Response
-                    .status(Response.Status.BAD_REQUEST)
-                    .entity(e.message)
-                    .build()
+            // For the purposes of this demo app, we do not differentiate by exception type.
+            Response.Status.BAD_REQUEST to e.message
         }
+
+        return Response.status(status).entity(message).build()
     }
 
     /**
@@ -115,16 +123,17 @@ class IOUApi(val services: CordaRPCOps) {
                     @QueryParam(value = "party") party: String): Response {
         val linearId = UniqueIdentifier.fromString(id)
         val newLender = services.partyFromName(party) ?: throw IllegalArgumentException("Unknown party name.")
-        try {
-            services.startFlowDynamic(IOUTransferFlow::class.java, linearId, newLender).returnValue.get()
-            return Response.status(Response.Status.CREATED).entity("IOU $id transferred to $party.").build()
 
+        val (status, message) = try {
+            val flowHandle = services.startFlowDynamic(IOUTransferFlow::class.java, linearId, newLender)
+            // We don't care about the signed tx returned by the flow, only that it finishes successfully
+            flowHandle.use { flowHandle.returnValue.getOrThrow() }
+            Response.Status.CREATED to "IOU $id transferred to $party."
         } catch (e: Exception) {
-            return Response
-                    .status(Response.Status.BAD_REQUEST)
-                    .entity(e.message)
-                    .build()
+            Response.Status.BAD_REQUEST to e.message
         }
+
+        return Response.status(status).entity(message).build()
     }
 
     /**
@@ -138,16 +147,15 @@ class IOUApi(val services: CordaRPCOps) {
         val linearId = UniqueIdentifier.fromString(id)
         val settleAmount = Amount(amount.toLong() * 100, Currency.getInstance(currency))
 
-        try {
-            services.startFlowDynamic(IOUSettleFlow::class.java, linearId, settleAmount).returnValue.get()
-            return Response.status(Response.Status.CREATED).entity("$amount $currency paid off on IOU id $id.").build()
-
+        val (status, message) = try {
+            val flowHandle = services.startFlowDynamic(IOUSettleFlow::class.java, linearId, settleAmount)
+            flowHandle.use { flowHandle.returnValue.getOrThrow() }
+            Response.Status.CREATED to "$amount $currency paid off on IOU id $id."
         } catch (e: Exception) {
-            return Response
-                    .status(Response.Status.BAD_REQUEST)
-                    .entity(e.message)
-                    .build()
+            Response.Status.BAD_REQUEST to e.message
         }
+
+        return Response.status(status).entity(message).build()
     }
 
     /**
@@ -159,15 +167,21 @@ class IOUApi(val services: CordaRPCOps) {
                       @QueryParam(value = "currency") currency: String): Response {
         val issueAmount = Amount(amount.toLong() * 100, Currency.getInstance(currency))
 
-        try {
-            val cashState = services.startFlowDynamic(SelfIssueCashFlow::class.java, issueAmount).returnValue.get()
-            return Response.status(Response.Status.CREATED).entity(cashState.toString()).build()
-
+        val (status, message) = try {
+            val flowHandle = services.startFlowDynamic(SelfIssueCashFlow::class.java, issueAmount)
+            val cashState = flowHandle.use { it.returnValue.getOrThrow() }
+            Response.Status.CREATED to cashState.toString()
         } catch (e: Exception) {
-            return Response
-                    .status(Response.Status.BAD_REQUEST)
-                    .entity(e.message)
-                    .build()
+            Response.Status.BAD_REQUEST to e.message
         }
+
+        return Response.status(status).entity(message).build()
+    }
+
+    // Helper method to get just the snapshot portion of an RPC call which also returns an Observable of updates. It's
+    // important to unsubscribe from this Observable if we're not going to use it as otherwise we leak resources on the server.
+    private val <A> Pair<A, Observable<*>>.justSnapshot: A get() {
+        second.notUsed()
+        return first
     }
 }

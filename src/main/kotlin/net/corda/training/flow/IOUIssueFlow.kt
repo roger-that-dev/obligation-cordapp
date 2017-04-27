@@ -35,7 +35,7 @@ class IOUIssueFlow(val state: IOUState, val otherParty: Party): FlowLogic<Signed
 
         // Step 5. Verify and sign it with our KeyPair.
         builder.toWireTransaction().toLedgerTransaction(serviceHub).verify()
-        val ptx = builder.signWith(serviceHub.legalIdentityKey).toSignedTransaction(false)
+        val ptx = builder.signWith(serviceHub.legalIdentityKey).toSignedTransaction(checkSufficientSignatures = false)
 
         // Step 6. Collect the other party's signature using the SignTransactionFlow.
         val stx = subFlow(SignTransactionFlow.Initiator(ptx))

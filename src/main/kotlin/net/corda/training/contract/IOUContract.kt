@@ -4,6 +4,7 @@ import net.corda.contracts.asset.Cash
 import net.corda.contracts.asset.sumCash
 import net.corda.core.contracts.*
 import net.corda.core.contracts.Requirements.by
+import net.corda.core.contracts.TransactionForContract.InOutGroup
 import net.corda.core.crypto.SecureHash
 import net.corda.training.state.IOUState
 
@@ -58,7 +59,7 @@ class IOUContract : Contract {
             }
             is Commands.Settle -> {
                 // Check there is only one group of IOUs and that there is always an input IOU.
-                val ious = tx.groupStates<IOUState, UniqueIdentifier> { it.linearId }.single()
+                val ious: InOutGroup<IOUState, UniqueIdentifier> = tx.groupStates<IOUState, UniqueIdentifier> { it.linearId }.single()
                 requireThat { "There must be one input IOU." by (ious.inputs.size == 1) }
                 // Check there are output cash states.
                 val cash = tx.outputs.filterIsInstance<Cash.State>()
