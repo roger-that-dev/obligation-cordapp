@@ -1,6 +1,6 @@
 ![Corda](https://www.corda.net/wp-content/uploads/2016/11/fg005_corda_b.png)
 
-# IOU CorDapp Version 2.
+# IOU CorDapp Version 2
 
 This repo contains an updated version of the original IOU Cordapp. The following features have been added:
 
@@ -37,4 +37,3 @@ Navigate to http://localhost:PORT/web/iou to use the web interface where PORT ty
 Via the node shell from any node which is not the **Controller**: 
 
 1. Use `flow start SelfIssueCashFlow amount: X, currency: GBP` to issue cash.
-2. Use `

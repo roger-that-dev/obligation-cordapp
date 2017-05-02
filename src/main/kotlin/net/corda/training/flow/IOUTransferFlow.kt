@@ -1,7 +1,9 @@
 package net.corda.training.flow
 
 import co.paralleluniverse.fibers.Suspendable
-import net.corda.core.contracts.*
+import net.corda.core.contracts.Command
+import net.corda.core.contracts.TransactionType
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.crypto.Party
 import net.corda.core.flows.FlowLogic
 import net.corda.core.node.services.linearHeadsOfType
@@ -22,13 +24,11 @@ class IOUTransferFlow(val linearId: UniqueIdentifier, val newLender: Party): Flo
     override fun call(): SignedTransaction {
         // Stage 1. Retrieve IOU specified by linearId from the vault.
         val iouStates = serviceHub.vaultService.linearHeadsOfType<IOUState>()
-        val iouStateAndRef = iouStates[linearId] ?: throw Exception("IOUState with linearId $linearId not found.")
+        val iouStateAndRef = iouStates[linearId] ?: throw IllegalArgumentException("IOUState with linearId $linearId not found.")
         val inputIou = iouStateAndRef.state.data
 
         // Stage 2. This flow can only be initiated by the current recipient.
-        if (serviceHub.myInfo.legalIdentity != inputIou.lender) {
-            throw IllegalArgumentException("IOU transfer can only be initiated by the IOU lender.")
-        }
+        require(serviceHub.myInfo.legalIdentity == inputIou.lender) { "IOU transfer can only be initiated by the IOU lender." }
 
         // Stage 3. Create the new IOU state reflecting a new lender.
         val outputIou = inputIou.withNewLender(newLender)
@@ -46,7 +46,7 @@ class IOUTransferFlow(val linearId: UniqueIdentifier, val newLender: Party): Flo
 
         // Stage 7. Verify and sign the transaction.
         builder.toWireTransaction().toLedgerTransaction(serviceHub).verify()
-        val ptx = builder.signWith(serviceHub.legalIdentityKey).toSignedTransaction(false)
+        val ptx = builder.signWith(serviceHub.legalIdentityKey).toSignedTransaction(checkSufficientSignatures = false)
 
         // Stage 8. Collect signature from borrower and the new lender and add it to the transaction.
         // This also verifies the transaction and checks the signatures.

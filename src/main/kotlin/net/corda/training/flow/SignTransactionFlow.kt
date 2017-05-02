@@ -60,7 +60,6 @@ object SignTransactionFlow {
          * - It has input states
          * - It has a timestamp
          */
-        @Suspendable
         private fun needsNotarySignature(wtx: WireTransaction) = wtx.inputs.isNotEmpty() || wtx.timestamp != null
 
         /**

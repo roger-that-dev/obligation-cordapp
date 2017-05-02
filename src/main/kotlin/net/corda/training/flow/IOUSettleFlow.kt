@@ -1,8 +1,10 @@
 package net.corda.training.flow
 
 import co.paralleluniverse.fibers.Suspendable
-import net.corda.core.contracts.*
-import net.corda.core.crypto.Party
+import net.corda.core.contracts.Amount
+import net.corda.core.contracts.Command
+import net.corda.core.contracts.TransactionType
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.FlowLogic
 import net.corda.core.node.services.linearHeadsOfType
 import net.corda.core.transactions.SignedTransaction
@@ -18,27 +20,22 @@ class IOUSettleFlow(val linearId: UniqueIdentifier, val amount: Amount<Currency>
 
         // Step 1. Retrieve the IOU state from the vault.
         val iouStates = serviceHub.vaultService.linearHeadsOfType<IOUState>()
-        val iouToSettle = iouStates[linearId] ?: throw Exception("IOUState with linearId $linearId not found.")
+        val iouToSettle = iouStates[linearId] ?: throw IllegalArgumentException("IOUState with linearId $linearId not found.")
         val counterparty = iouToSettle.state.data.lender
 
         // Step 2. Check the party running this flow is the borrower.
-        if (me != iouToSettle.state.data.borrower) {
-            throw IllegalArgumentException("IOU settlement flow must be initiated by the borrower.")
-        }
+        require(iouToSettle.state.data.borrower == me) { "IOU settlement flow must be initiated by the borrower." }
 
         // Step 3. Create a transaction builder.
         val notary = iouToSettle.state.notary
         val builder = TransactionType.General.Builder(notary)
 
         // Step 4. Check we have enough cash to settle the requested amount.
-        val cashBalance = serviceHub.vaultService.cashBalances[amount.token]
-        if (cashBalance == null) {
-            throw IllegalArgumentException("Borrower has no ${amount.token} to settle.")
-        } else if(cashBalance < amount) {
-            throw IllegalArgumentException("Borrower has only $cashBalance but needs $amount to settle.")
-        } else if (amount > (iouToSettle.state.data.amount - iouToSettle.state.data.paid)) {
-            throw IllegalArgumentException("Borrower tried to settle with $amount but only needs ${ (iouToSettle.state.data.amount - iouToSettle.state.data.paid) }")
-        }
+        val cashBalance = serviceHub.vaultService.cashBalances[amount.token] ?:
+                throw IllegalArgumentException("Borrower has no ${amount.token} to settle.")
+        val amountLeftToSettle = iouToSettle.state.data.amount - iouToSettle.state.data.paid
+        require(cashBalance >= amount) { "Borrower has only $cashBalance but needs $amount to settle." }
+        require(amountLeftToSettle >= amount) { "Borrower tried to settle with $amount but only needs $amountLeftToSettle" }
 
         // Step 5. Get some cash from the vault and add a spend to our transaction builder.
         serviceHub.vaultService.generateSpend(builder, amount, counterparty.owningKey)
@@ -50,7 +47,7 @@ class IOUSettleFlow(val linearId: UniqueIdentifier, val amount: Amount<Currency>
         builder.addInputState(iouToSettle)
 
         // Step 7. Only add an output IOU state of the IOU has not been fully settled.
-        val amountRemaining = iouToSettle.state.data.amount - iouToSettle.state.data.paid - amount
+        val amountRemaining = amountLeftToSettle - amount
         if (amountRemaining > Amount(0, amount.token)) {
             val settledIOU: IOUState = iouToSettle.state.data.pay(amount)
             builder.addOutputState(settledIOU)
