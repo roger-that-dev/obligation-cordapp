@@ -1,2 +1,2 @@
 # Register a ServiceLoader service extending from net.corda.node.CordaPluginRegistry
-net.corda.training.plugin.IOUPlugin
+net.corda.iou.plugin.IOUPlugin
