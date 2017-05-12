@@ -2,9 +2,9 @@
 
 # IOU CorDapp Version 2
 
-This repo contains an updated version of the original IOU Cordapp. The following features have been added:
+This repo contains an updated version of the original IOU CorDapp. The following features have been added:
 
-* The code has been rebased to Corda M10.1
+* The code has been rebased to Corda M11
 * Nodes can self issue cash
 * Nodes can transfer IOUs to other nodes (this is a demonstration of a 3 Party flow)
 * Node's can fully or partially settle IOUs with the self issued cash (Either GBP, USD, or CHF)
@@ -12,7 +12,7 @@ This repo contains an updated version of the original IOU Cordapp. The following
 
 # Pre-requisites:
   
-* JDK 1.8 latest version
+* JDK 1.8 latest version (1.8.131)
 * IntelliJ latest version (2017.1) (as of writing)
 * git
 
