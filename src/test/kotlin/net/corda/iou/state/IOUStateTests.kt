@@ -4,10 +4,9 @@ import net.corda.core.contracts.*
 import net.corda.core.crypto.AnonymousParty
 import net.corda.core.crypto.CompositeKey
 import net.corda.core.crypto.Party
-import net.corda.testing.ALICE
-import net.corda.testing.ALICE_PUBKEY
-import net.corda.testing.BOB
-import net.corda.testing.BOB_PUBKEY
+import net.corda.core.utilities.ALICE
+import net.corda.core.utilities.BOB
+import net.corda.core.utilities.CHARLIE
 import org.junit.Test
 import java.util.*
 import kotlin.test.assertEquals
@@ -25,6 +24,8 @@ import kotlin.test.assertNotEquals
  * Hint: CMD / Ctrl + click on the brown type names in square brackets for that type's definition in the codebase.
  */
 class IOUStateTests {
+    // An IOUState we can use for the unit tests.
+    // In this IOU, Alice is lending £1 to Bob.
     /**
      * Task 1.
      * TODO: Add an 'amount' property of type [Amount] to the [IOUState] class to get this test to pass.
@@ -83,6 +84,11 @@ class IOUStateTests {
         IOUState::class.java.getDeclaredField("paid")
         // Is the paid field of the correct type?
         assertEquals(IOUState::class.java.getDeclaredField("paid").type, Amount::class.java)
+        // Does the paid field's currency match the amount field's currency?
+        val iouStateGBP = IOUState(1.POUNDS, ALICE, BOB)
+        val iouStateUSD = IOUState(1.DOLLARS, ALICE, BOB)
+        assertEquals(iouStateGBP.amount.token, iouStateGBP.paid.token)
+        assertEquals(iouStateUSD.amount.token, iouStateUSD.paid.token)
     }
 
     /**
@@ -94,7 +100,7 @@ class IOUStateTests {
     @Test
     fun lenderIsParticipant() {
         val iouState = IOUState(1.POUNDS, ALICE, BOB)
-        assertNotEquals(iouState.participants.indexOf(ALICE_PUBKEY), -1)
+        assertNotEquals(iouState.participants.indexOf(ALICE.owningKey), -1)
     }
 
     /**
@@ -106,7 +112,7 @@ class IOUStateTests {
     @Test
     fun borrowerIsParticipant() {
         val iouState = IOUState(1.POUNDS, ALICE, BOB)
-        assertNotEquals(iouState.participants.indexOf(BOB_PUBKEY), -1)
+        assertNotEquals(iouState.participants.indexOf(BOB.owningKey), -1)
     }
 
     /**
@@ -153,7 +159,7 @@ class IOUStateTests {
     @Test
     fun isRelevantMethodComplete() {
         val iouState = IOUState(1.POUNDS, ALICE, BOB)
-        assert(iouState.isRelevant(setOf(ALICE.owningKey.singleKey, BOB.owningKey.singleKey)))
+        assert(iouState.isRelevant(setOf(ALICE.owningKey, BOB.owningKey)))
     }
 
     /**
@@ -193,12 +199,12 @@ class IOUStateTests {
     @Test
     fun checkIOUStateToStringMethod() {
         val iouState = IOUState(1.POUNDS, ALICE, BOB)
-        assertEquals(iouState.toString(), "IOU(${iouState.linearId}): Bob owes Alice 1.00 GBP and has paid 0.00 GBP so far.")
+        assertEquals(iouState.toString(), "IOU(${iouState.linearId}): CN=Bob Plc,O=Bob Plc,L=London,C=UK owes CN=Alice Corp,O=Alice Corp,L=London,C=UK 1.00 GBP and has paid 0.00 GBP so far.")
     }
 
     /**
      * Task 12.
-     * TODO: Add a helper method called [pay] that can be called from an [IOUState] to settle an amount of the IOU.
+     * TODO: Add a helper method called [IOUState.pay] to settle an amount of the IOU.
      * Hint: You will need to increase the [IOUState.paid] property by the amount the borrower wishes to pay.
      */
     @Test
@@ -207,5 +213,15 @@ class IOUStateTests {
         assertEquals(5.DOLLARS, iou.pay(5.DOLLARS).paid)
         assertEquals(3.DOLLARS, iou.pay(1.DOLLARS).pay(2.DOLLARS).paid)
         assertEquals(10.DOLLARS, iou.pay(5.DOLLARS).pay(3.DOLLARS).pay(2.DOLLARS).paid)
+    }
+
+    /**
+     * Task 13.
+     * TODO: Add a helper method called [IOUState.withNewLender] to create a copy of the IOU where the lender has been changed.
+     */
+    @Test
+    fun checkWithNewLenderHelperMethod() {
+        val iou = IOUState(10.DOLLARS, ALICE, BOB)
+        assertEquals(CHARLIE, iou.withNewLender(CHARLIE).lender)
     }
 }

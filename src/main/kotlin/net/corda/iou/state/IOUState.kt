@@ -3,9 +3,7 @@ package net.corda.iou.state
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.LinearState
 import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.crypto.CompositeKey
 import net.corda.core.crypto.Party
-import net.corda.core.crypto.keys
 import net.corda.iou.contract.IOUContract
 import java.security.PublicKey
 import java.util.*
@@ -33,13 +31,13 @@ data class IOUState(val amount: Amount<Currency>,
      * We do this by checking that the set intersection of the vault public keys with the participant public keys
      * is not the empty set.
      */
-    override fun isRelevant(ourKeys: Set<PublicKey>): Boolean = ourKeys.intersect(participants.keys).isNotEmpty()
+    override fun isRelevant(ourKeys: Set<PublicKey>): Boolean = ourKeys.intersect(participants).isNotEmpty()
 
     /**
      *  This property holds a list of the public keys which belong to the nodes which can "use" this state in a valid
      *  transaction. In this case, the lender or the borrower.
      */
-    override val participants: List<CompositeKey> get() = listOf(lender.owningKey, borrower.owningKey)
+    override val participants: List<PublicKey> get() = listOf(lender.owningKey, borrower.owningKey)
 
     /**
      * A Contract code reference to the IOUContract. Make sure this is not part of the [IOUState] constructor, if it is
@@ -56,6 +54,12 @@ data class IOUState(val amount: Amount<Currency>,
      * Helper method which creates a copy of the current state with a newly specified lender. For use when transferring.
      */
     fun withNewLender(newLender: Party) = copy(lender = newLender)
+
+    /**
+     * Helper method which creates a copy of the current state with a dummy paid amount. Useful for checking that two
+     * [IOUState]s
+     */
+    fun withoutPaid() = copy(paid = Amount(0, Currency.getInstance("INVALID_CCY_CODE")))
 
     /**
      * A toString() helper method for displaying IOUs in the console.
