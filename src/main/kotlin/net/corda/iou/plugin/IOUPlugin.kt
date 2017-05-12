@@ -6,9 +6,11 @@ import net.corda.core.crypto.Party
 import net.corda.core.messaging.CordaRPCOps
 import net.corda.core.node.CordaPluginRegistry
 import net.corda.core.node.PluginServiceHub
-import net.corda.core.transactions.WireTransaction
 import net.corda.iou.api.IOUApi
-import net.corda.iou.flow.*
+import net.corda.iou.flow.IOUIssueFlow
+import net.corda.iou.flow.IOUSettleFlow
+import net.corda.iou.flow.IOUTransferFlow
+import net.corda.iou.flow.SelfIssueCashFlow
 import net.corda.iou.service.IOUService
 import net.corda.iou.state.IOUState
 import java.util.function.Function
@@ -26,7 +28,6 @@ class IOUPlugin : CordaPluginRegistry() {
             IOUIssueFlow::class.java.name to setOf(IOUState::class.java.name, Party::class.java.name),
             IOUTransferFlow::class.java.name to setOf(UniqueIdentifier::class.java.name, Party::class.java.name),
             IOUSettleFlow::class.java.name to setOf(UniqueIdentifier::class.java.name, Amount::class.java.name),
-            SignTransactionFlow.Initiator::class.java.name to setOf(WireTransaction::class.java.name),
             SelfIssueCashFlow::class.java.name to setOf(Amount::class.java.name)
     )
 
