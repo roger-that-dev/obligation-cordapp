@@ -25,9 +25,9 @@ class IOUPlugin : CordaPluginRegistry() {
      * A list of flows required for this CorDapp.
      */
     override val requiredFlows: Map<String, Set<String>> = mapOf(
-            IOUIssueFlow::class.java.name to setOf(IOUState::class.java.name, Party::class.java.name),
-            IOUTransferFlow::class.java.name to setOf(UniqueIdentifier::class.java.name, Party::class.java.name),
-            IOUSettleFlow::class.java.name to setOf(UniqueIdentifier::class.java.name, Amount::class.java.name),
+            IOUIssueFlow.Initiator::class.java.name to setOf(IOUState::class.java.name, Party::class.java.name),
+            IOUTransferFlow.Initiator::class.java.name to setOf(UniqueIdentifier::class.java.name, Party::class.java.name),
+            IOUSettleFlow.Initiator::class.java.name to setOf(UniqueIdentifier::class.java.name, Amount::class.java.name),
             SelfIssueCashFlow::class.java.name to setOf(Amount::class.java.name)
     )
 
