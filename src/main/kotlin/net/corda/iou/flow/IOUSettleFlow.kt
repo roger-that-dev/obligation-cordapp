@@ -9,6 +9,7 @@ import net.corda.core.crypto.Party
 import net.corda.core.flows.FlowLogic
 import net.corda.core.node.services.linearHeadsOfType
 import net.corda.core.transactions.SignedTransaction
+import net.corda.core.utilities.ProgressTracker
 import net.corda.flows.FinalityFlow
 import net.corda.iou.contract.IOUContract
 import net.corda.iou.state.IOUState
@@ -16,11 +17,25 @@ import java.util.*
 
 object IOUSettleFlow {
     class Initiator(val linearId: UniqueIdentifier, val amount: Amount<Currency>) : FlowLogic<SignedTransaction>() {
+
+        override val progressTracker: ProgressTracker = Initiator.tracker()
+
+        companion object {
+            object PREPARATION : ProgressTracker.Step("Obtaining IOU from vault")
+            object BUILDING : ProgressTracker.Step("Building and verifying transaction.")
+            object SIGNING : ProgressTracker.Step("signing transaction.")
+            object COLLECTING : ProgressTracker.Step("Collecting counterparty signature.")
+            object FINALISING : ProgressTracker.Step("Finalising transaction.")
+
+            fun tracker() = ProgressTracker(PREPARATION, BUILDING, SIGNING, COLLECTING, FINALISING)
+        }
+
         @Suspendable
         override fun call(): SignedTransaction {
             val me = serviceHub.myInfo.legalIdentity
 
             // Step 1. Retrieve the IOU state from the vault.
+            progressTracker.currentStep = PREPARATION
             val iouStates = serviceHub.vaultService.linearHeadsOfType<IOUState>()
             val iouToSettle = iouStates[linearId] ?: throw IllegalArgumentException("IOUState with linearId $linearId not found.")
             val counterparty = iouToSettle.state.data.lender
@@ -29,6 +44,7 @@ object IOUSettleFlow {
             require(iouToSettle.state.data.borrower == me) { "IOU settlement flow must be initiated by the borrower." }
 
             // Step 3. Create a transaction builder.
+            progressTracker.currentStep = BUILDING
             val notary = iouToSettle.state.notary
             val builder = TransactionType.General.Builder(notary)
 
@@ -57,12 +73,15 @@ object IOUSettleFlow {
 
             // Step 8. Verify and sign the transaction.
             builder.toWireTransaction().toLedgerTransaction(serviceHub).verify()
+            progressTracker.currentStep = SIGNING
             val ptx = builder.signWith(serviceHub.legalIdentityKey).toSignedTransaction(false)
 
             // Step 9. Get counterparty signature.
+            progressTracker.currentStep = COLLECTING
             val stx = subFlow(CollectSignaturesFlow(ptx), shareParentSessions = true)
 
             // Step 10. Finalize the transaction.
+            progressTracker.currentStep = FINALISING
             return subFlow(FinalityFlow(stx, setOf(counterparty, me))).single()
         }
     }
