@@ -5,6 +5,7 @@ import net.corda.contracts.asset.Cash
 import net.corda.core.contracts.Amount
 import net.corda.core.flows.FlowLogic
 import net.corda.core.serialization.OpaqueBytes
+import net.corda.core.utilities.ProgressTracker
 import net.corda.flows.CashIssueFlow
 import java.util.*
 
@@ -13,6 +14,15 @@ import java.util.*
  * Only used for demo/sample/iou purposes!
  */
 class SelfIssueCashFlow(val amount: Amount<Currency>) : FlowLogic<Cash.State>() {
+
+    override val progressTracker: ProgressTracker = SelfIssueCashFlow.tracker()
+
+    companion object {
+        object PREPARING : ProgressTracker.Step("Preparing to self issue cash.")
+
+        fun tracker() = ProgressTracker(PREPARING)
+    }
+
     @Suspendable
     override fun call(): Cash.State {
         /** Create the cash issue command. */
@@ -20,6 +30,7 @@ class SelfIssueCashFlow(val amount: Amount<Currency>) : FlowLogic<Cash.State>() 
         val notary = serviceHub.networkMapCache.notaryNodes.single().notaryIdentity
         val me = serviceHub.myInfo.legalIdentity
         /** Create the cash issuance transaction. */
+        progressTracker.currentStep = PREPARING
         val cashIssueTransaction = subFlow(CashIssueFlow(amount, issueRef, me, notary))
         /** Return the cash output. */
         return cashIssueTransaction.tx.outputs.single().data as Cash.State

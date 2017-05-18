@@ -102,7 +102,7 @@ class IOUApi(val services: CordaRPCOps) {
 
         // Start the IOUIssueFlow. We block and wait for the flow to return.
         val (status, message) = try {
-            val flowHandle = services.startFlowDynamic(IOUIssueFlow.Initiator::class.java, state, lender)
+            val flowHandle = services.startTrackedFlowDynamic(IOUIssueFlow.Initiator::class.java, state, lender)
             val result = flowHandle.use { it.returnValue.getOrThrow() }
             // Return the response.
             Response.Status.CREATED to "Transaction id ${result.id} committed to ledger.\n${result.tx.outputs.single()}"
@@ -125,7 +125,7 @@ class IOUApi(val services: CordaRPCOps) {
         val newLender = services.partyFromName(party) ?: throw IllegalArgumentException("Unknown party name.")
 
         val (status, message) = try {
-            val flowHandle = services.startFlowDynamic(IOUTransferFlow.Initiator::class.java, linearId, newLender)
+            val flowHandle = services.startTrackedFlowDynamic(IOUTransferFlow.Initiator::class.java, linearId, newLender)
             // We don't care about the signed tx returned by the flow, only that it finishes successfully
             flowHandle.use { flowHandle.returnValue.getOrThrow() }
             Response.Status.CREATED to "IOU $id transferred to $party."
@@ -148,7 +148,7 @@ class IOUApi(val services: CordaRPCOps) {
         val settleAmount = Amount(amount.toLong() * 100, Currency.getInstance(currency))
 
         val (status, message) = try {
-            val flowHandle = services.startFlowDynamic(IOUSettleFlow.Initiator::class.java, linearId, settleAmount)
+            val flowHandle = services.startTrackedFlowDynamic(IOUSettleFlow.Initiator::class.java, linearId, settleAmount)
             flowHandle.use { flowHandle.returnValue.getOrThrow() }
             Response.Status.CREATED to "$amount $currency paid off on IOU id $id."
         } catch (e: Exception) {
@@ -168,7 +168,7 @@ class IOUApi(val services: CordaRPCOps) {
         val issueAmount = Amount(amount.toLong() * 100, Currency.getInstance(currency))
 
         val (status, message) = try {
-            val flowHandle = services.startFlowDynamic(SelfIssueCashFlow::class.java, issueAmount)
+            val flowHandle = services.startTrackedFlowDynamic(SelfIssueCashFlow::class.java, issueAmount)
             val cashState = flowHandle.use { it.returnValue.getOrThrow() }
             Response.Status.CREATED to cashState.toString()
         } catch (e: Exception) {
