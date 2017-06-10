@@ -13,6 +13,7 @@ import net.corda.iou.flow.IOUSettleFlow
 import net.corda.iou.flow.IOUTransferFlow
 import net.corda.iou.flow.SelfIssueCashFlow
 import net.corda.iou.state.IOUState
+import org.bouncycastle.asn1.x500.X500Name
 import rx.Observable
 import java.util.*
 import javax.ws.rs.GET
@@ -22,7 +23,9 @@ import javax.ws.rs.QueryParam
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 
-val SERVICE_NODE_NAMES = listOf("Controller", "NetworkMapService")
+val SERVICE_NODE_NAMES = listOf(
+        X500Name("CN=Controller,O=R3,L=London,C=UK"),
+        X500Name("CN=NetworkMapService,O=R3,L=London,C=UK"))
 
 /**
  * This API is accessible from /api/iou. The endpoint paths specified below are relative to it.
@@ -30,7 +33,7 @@ val SERVICE_NODE_NAMES = listOf("Controller", "NetworkMapService")
  */
 @Path("iou")
 class IOUApi(val services: CordaRPCOps) {
-    private val myLegalName: String = services.nodeIdentity().legalIdentity.name
+    private val myLegalName = services.nodeIdentity().legalIdentity.name
 
     /**
      * Returns the node's name.
@@ -47,12 +50,12 @@ class IOUApi(val services: CordaRPCOps) {
     @GET
     @Path("peers")
     @Produces(MediaType.APPLICATION_JSON)
-    fun getPeers(): Map<String, List<String>> {
-        val peers = services.networkMapUpdates()
-                .justSnapshot
+    fun getPeers(): Map<String, List<X500Name>> {
+        val (nodeInfo, nodeUpdates) = services.networkMapUpdates()
+        nodeUpdates.notUsed()
+        return mapOf("peers" to nodeInfo
                 .map { it.legalIdentity.name }
-                .filter { it != myLegalName && it !in SERVICE_NODE_NAMES }
-        return mapOf("peers" to peers)
+                .filter { it != myLegalName && it !in SERVICE_NODE_NAMES })
     }
 
     /**

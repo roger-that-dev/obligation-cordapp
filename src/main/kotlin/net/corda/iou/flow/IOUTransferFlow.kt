@@ -4,12 +4,17 @@ import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.TransactionType
 import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.crypto.Party
 import net.corda.core.flows.FlowLogic
+import net.corda.core.flows.InitiatedBy
+import net.corda.core.flows.InitiatingFlow
+import net.corda.core.flows.StartableByRPC
+import net.corda.core.identity.Party
 import net.corda.core.node.services.linearHeadsOfType
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.ProgressTracker
+import net.corda.flows.CollectSignaturesFlow
 import net.corda.flows.FinalityFlow
+import net.corda.flows.SignTransactionFlow
 import net.corda.iou.contract.IOUContract
 import net.corda.iou.state.IOUState
 
@@ -21,6 +26,8 @@ import net.corda.iou.state.IOUState
  * The flow returns the [SignedTransaction] that was committed to the ledger.
  */
 object IOUTransferFlow {
+    @StartableByRPC
+    @InitiatingFlow
     class Initiator(val linearId: UniqueIdentifier, val newLender: Party) : FlowLogic<SignedTransaction>() {
 
         override val progressTracker: ProgressTracker = Initiator.tracker()
@@ -29,8 +36,13 @@ object IOUTransferFlow {
             object PREPARATION : ProgressTracker.Step("Obtaining IOU from vault")
             object BUILDING : ProgressTracker.Step("Building and verifying transaction.")
             object SIGNING : ProgressTracker.Step("signing transaction.")
-            object COLLECTING : ProgressTracker.Step("Collecting counterparty signature.")
-            object FINALISING : ProgressTracker.Step("Finalising transaction.")
+            object COLLECTING : ProgressTracker.Step("Collecting counterparty signature.") {
+                override fun childProgressTracker() = CollectSignaturesFlow.tracker()
+            }
+
+            object FINALISING : ProgressTracker.Step("Finalising transaction") {
+                override fun childProgressTracker() = FinalityFlow.tracker()
+            }
 
             fun tracker() = ProgressTracker(PREPARATION, BUILDING, SIGNING, COLLECTING, FINALISING)
         }
@@ -51,7 +63,7 @@ object IOUTransferFlow {
             val outputIou = inputIou.withNewLender(newLender)
 
             // Stage 4. Create the transfer command.
-            val signers = inputIou.participants + newLender.owningKey
+            val signers = (inputIou.participants + newLender).map { it.owningKey }
             val transferCommand = Command(IOUContract.Commands.Transfer(), signers)
 
             // Stage 5. Get a reference to a transaction builder.
@@ -64,12 +76,12 @@ object IOUTransferFlow {
             // Stage 7. Verify and sign the transaction.
             builder.toWireTransaction().toLedgerTransaction(serviceHub).verify()
             progressTracker.currentStep = SIGNING
-            val ptx = builder.signWith(serviceHub.legalIdentityKey).toSignedTransaction(checkSufficientSignatures = false)
+            val ptx = serviceHub.signInitialTransaction(builder)
 
             // Stage 8. Collect signature from borrower and the new lender and add it to the transaction.
             // This also verifies the transaction and checks the signatures.
             progressTracker.currentStep = COLLECTING
-            val stx = subFlow(CollectSignaturesFlow(ptx), shareParentSessions = true)
+            val stx = subFlow(CollectSignaturesFlow(ptx, COLLECTING.childProgressTracker()))
 
             // Stage 9. Notarise and record, the transaction in our vaults.
             progressTracker.currentStep = FINALISING
@@ -77,6 +89,7 @@ object IOUTransferFlow {
         }
     }
 
+    @InitiatedBy(IOUTransferFlow.Initiator::class)
     class Responder(val otherParty: Party) : FlowLogic<SignedTransaction>() {
         @Suspendable
         override fun call(): SignedTransaction {
@@ -87,7 +100,7 @@ object IOUTransferFlow {
                 }
             }
 
-            val stx = subFlow(flow, shareParentSessions = true)
+            val stx = subFlow(flow)
 
             return waitForLedgerCommit(stx.id)
         }

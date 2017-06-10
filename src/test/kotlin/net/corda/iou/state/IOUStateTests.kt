@@ -1,7 +1,7 @@
 package net.corda.iou.state
 
 import net.corda.core.contracts.*
-import net.corda.core.crypto.Party
+import net.corda.core.identity.Party
 import net.corda.core.utilities.ALICE
 import net.corda.core.utilities.BOB
 import net.corda.core.utilities.CHARLIE
@@ -50,13 +50,13 @@ class IOUStateTests {
     @Test
     fun lenderIsParticipant() {
         val iouState = IOUState(1.POUNDS, ALICE, BOB)
-        assertNotEquals(iouState.participants.indexOf(ALICE.owningKey), -1)
+        assertNotEquals(iouState.participants.indexOf(ALICE), -1)
     }
 
     @Test
     fun borrowerIsParticipant() {
         val iouState = IOUState(1.POUNDS, ALICE, BOB)
-        assertNotEquals(iouState.participants.indexOf(BOB.owningKey), -1)
+        assertNotEquals(iouState.participants.indexOf(BOB), -1)
     }
 
     @Test
@@ -91,7 +91,7 @@ class IOUStateTests {
     @Test
     fun checkIOUStateToStringMethod() {
         val iouState = IOUState(1.POUNDS, ALICE, BOB)
-        assertEquals(iouState.toString(), "IOU(${iouState.linearId}): CN=Bob Plc,O=Bob Plc,L=London,C=UK owes CN=Alice Corp,O=Alice Corp,L=London,C=UK 1.00 GBP and has paid 0.00 GBP so far.")
+        assertEquals(iouState.toString(), "IOU(${iouState.linearId}): CN=Bob Plc,O=Bob Plc,L=Rome,C=IT owes CN=Alice Corp,O=Alice Corp,L=Madrid,C=ES 1.00 GBP and has paid 0.00 GBP so far.")
     }
 
     @Test

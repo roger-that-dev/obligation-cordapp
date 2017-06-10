@@ -29,6 +29,9 @@ class IOUIssueFlowTests {
         val nodes = net.createSomeNodes(2)
         a = nodes.partyNodes[0]
         b = nodes.partyNodes[1]
+        nodes.partyNodes.forEach {
+            it.registerInitiatedFlow(IOUIssueFlow.Responder::class.java)
+        }
         net.runNetwork()
     }
 
@@ -36,6 +39,7 @@ class IOUIssueFlowTests {
     fun tearDown() {
         net.stopNodes()
     }
+
 
     @Test
     fun flowReturnsCorrectlyFormedPartiallySignedTransaction() {
@@ -53,7 +57,7 @@ class IOUIssueFlowTests {
         assert(ptx.tx.outputs.single().data is IOUState)
         val command = ptx.tx.commands.single()
         assert(command.value == IOUContract.Commands.Issue())
-        assert(command.signers.toSet() == iou.participants.toSet())
+        assert(command.signers.toSet() == iou.participants.map { it.owningKey }.toSet())
         ptx.verifySignatures(b.info.legalIdentity.owningKey, DUMMY_NOTARY.owningKey)
     }
 

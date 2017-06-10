@@ -1,7 +1,7 @@
 package net.corda.iou.contract
 
 import net.corda.core.contracts.*
-import net.corda.core.crypto.CompositeKey
+import net.corda.core.identity.AbstractParty
 import net.corda.core.utilities.ALICE
 import net.corda.core.utilities.BOB
 import net.corda.core.utilities.CHARLIE
@@ -14,7 +14,7 @@ class IOUTransferTests {
     // A pre-made dummy state we may need for some of the tests.
     class DummyState : ContractState {
         override val contract get() = DUMMY_PROGRAM_ID
-        override val participants: List<CompositeKey> get() = listOf()
+        override val participants: List<AbstractParty> get() = listOf()
     }
     // A dummy command.
     class DummyCommand : CommandData
