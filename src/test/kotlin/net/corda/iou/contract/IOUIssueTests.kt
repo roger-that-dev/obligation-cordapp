@@ -1,7 +1,7 @@
 package net.corda.iou.contract
 
 import net.corda.core.contracts.*
-import net.corda.core.crypto.CompositeKey
+import net.corda.core.identity.AbstractParty
 import net.corda.core.utilities.ALICE
 import net.corda.core.utilities.BOB
 import net.corda.core.utilities.DUMMY_PUBKEY_1
@@ -16,7 +16,7 @@ class IOUIssueTests {
     // A pre-made dummy state we may need for some of the tests.
     val dummyState = object : ContractState {
         override val contract get() = DUMMY_PROGRAM_ID
-        override val participants: List<CompositeKey> get() = listOf()
+        override val participants: List<AbstractParty> get() = listOf()
     }
     // A pre-defined dummy command.
     class DummyCommand : TypeOnlyCommandData()
@@ -80,7 +80,6 @@ class IOUIssueTests {
 
     @Test
     fun cannotCreateZeroValueIOUs() {
-        val iou = IOUState(1.POUNDS, ALICE, BOB)
         ledger {
             transaction {
                 command(ALICE_PUBKEY, BOB_PUBKEY) { IOUContract.Commands.Issue() }

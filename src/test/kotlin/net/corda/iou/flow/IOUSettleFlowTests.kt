@@ -32,6 +32,11 @@ class IOUSettleFlowTests {
         a = nodes.partyNodes[0]
         b = nodes.partyNodes[1]
         c = nodes.partyNodes[2]
+        nodes.partyNodes.forEach {
+            it.registerInitiatedFlow(IOUIssueFlow.Responder::class.java)
+            it.registerInitiatedFlow(IOUSettleFlow.Responder::class.java)
+
+        }
         net.runNetwork()
     }
 
@@ -83,7 +88,7 @@ class IOUSettleFlowTests {
         val outputCashSum = ledgerTx.outputs
                 .map { it.data }
                 .filterIsInstance<Cash.State>()
-                .filter { it.owner == b.info.legalIdentity.owningKey }
+                .filter { it.owner == b.info.legalIdentity }
                 .sumCash()
                 .withoutIssuer()
         // Compare the cash assigned to the lender with the amount claimed is being settled by the borrower.

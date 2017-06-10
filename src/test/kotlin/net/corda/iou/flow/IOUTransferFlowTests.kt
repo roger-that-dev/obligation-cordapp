@@ -14,10 +14,6 @@ import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertFailsWith
 
-/**
- * Practical exercise instructions.
- * Uncomment the unit tests and use the hints + unit test body to complete the FLows such that the unit tests pass.
- */
 class IOUTransferFlowTests {
     lateinit var net: MockNetwork
     lateinit var a: MockNetwork.MockNode
@@ -31,6 +27,10 @@ class IOUTransferFlowTests {
         a = nodes.partyNodes[0]
         b = nodes.partyNodes[1]
         c = nodes.partyNodes[2]
+        nodes.partyNodes.forEach {
+            it.registerInitiatedFlow(IOUIssueFlow.Responder::class.java)
+            it.registerInitiatedFlow(IOUTransferFlow.Responder::class.java)
+        }
         net.runNetwork()
     }
 

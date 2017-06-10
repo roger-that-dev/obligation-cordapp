@@ -13,6 +13,7 @@ import net.corda.iou.flow.IOUSettleFlow
 import net.corda.iou.flow.IOUTransferFlow
 import net.corda.iou.flow.SelfIssueCashFlow
 import net.corda.iou.state.IOUState
+import org.bouncycastle.asn1.x500.X500Name
 import rx.Observable
 import java.util.*
 import javax.ws.rs.GET
@@ -22,7 +23,9 @@ import javax.ws.rs.QueryParam
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 
-val SERVICE_NODE_NAMES = listOf("Controller", "NetworkMapService")
+val SERVICE_NODE_NAMES = listOf(
+        X500Name("CN=Controller,O=R3,L=London,C=UK"),
+        X500Name("CN=NetworkMapService,O=R3,L=London,C=UK"))
 
 /**
  * This API is accessible from /api/iou. The endpoint paths specified below are relative to it.
@@ -30,7 +33,7 @@ val SERVICE_NODE_NAMES = listOf("Controller", "NetworkMapService")
  */
 @Path("iou")
 class IOUApi(val services: CordaRPCOps) {
-    private val myLegalName: String = services.nodeIdentity().legalIdentity.name
+    private val myLegalName = services.nodeIdentity().legalIdentity.name
 
     /**
      * Returns the node's name.
@@ -47,12 +50,12 @@ class IOUApi(val services: CordaRPCOps) {
     @GET
     @Path("peers")
     @Produces(MediaType.APPLICATION_JSON)
-    fun getPeers(): Map<String, List<String>> {
-        val peers = services.networkMapUpdates()
-                .justSnapshot
+    fun getPeers(): Map<String, List<X500Name>> {
+        val (nodeInfo, nodeUpdates) = services.networkMapUpdates()
+        nodeUpdates.notUsed()
+        return mapOf("peers" to nodeInfo
                 .map { it.legalIdentity.name }
-                .filter { it != myLegalName && it !in SERVICE_NODE_NAMES }
-        return mapOf("peers" to peers)
+                .filter { it != myLegalName && it !in SERVICE_NODE_NAMES })
     }
 
     /**
@@ -102,7 +105,7 @@ class IOUApi(val services: CordaRPCOps) {
 
         // Start the IOUIssueFlow. We block and wait for the flow to return.
         val (status, message) = try {
-            val flowHandle = services.startFlowDynamic(IOUIssueFlow.Initiator::class.java, state, lender)
+            val flowHandle = services.startTrackedFlowDynamic(IOUIssueFlow.Initiator::class.java, state, lender)
             val result = flowHandle.use { it.returnValue.getOrThrow() }
             // Return the response.
             Response.Status.CREATED to "Transaction id ${result.id} committed to ledger.\n${result.tx.outputs.single()}"
@@ -125,7 +128,7 @@ class IOUApi(val services: CordaRPCOps) {
         val newLender = services.partyFromName(party) ?: throw IllegalArgumentException("Unknown party name.")
 
         val (status, message) = try {
-            val flowHandle = services.startFlowDynamic(IOUTransferFlow.Initiator::class.java, linearId, newLender)
+            val flowHandle = services.startTrackedFlowDynamic(IOUTransferFlow.Initiator::class.java, linearId, newLender)
             // We don't care about the signed tx returned by the flow, only that it finishes successfully
             flowHandle.use { flowHandle.returnValue.getOrThrow() }
             Response.Status.CREATED to "IOU $id transferred to $party."
@@ -148,7 +151,7 @@ class IOUApi(val services: CordaRPCOps) {
         val settleAmount = Amount(amount.toLong() * 100, Currency.getInstance(currency))
 
         val (status, message) = try {
-            val flowHandle = services.startFlowDynamic(IOUSettleFlow.Initiator::class.java, linearId, settleAmount)
+            val flowHandle = services.startTrackedFlowDynamic(IOUSettleFlow.Initiator::class.java, linearId, settleAmount)
             flowHandle.use { flowHandle.returnValue.getOrThrow() }
             Response.Status.CREATED to "$amount $currency paid off on IOU id $id."
         } catch (e: Exception) {
@@ -168,7 +171,7 @@ class IOUApi(val services: CordaRPCOps) {
         val issueAmount = Amount(amount.toLong() * 100, Currency.getInstance(currency))
 
         val (status, message) = try {
-            val flowHandle = services.startFlowDynamic(SelfIssueCashFlow::class.java, issueAmount)
+            val flowHandle = services.startTrackedFlowDynamic(SelfIssueCashFlow::class.java, issueAmount)
             val cashState = flowHandle.use { it.returnValue.getOrThrow() }
             Response.Status.CREATED to cashState.toString()
         } catch (e: Exception) {
