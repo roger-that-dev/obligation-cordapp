@@ -13,9 +13,12 @@ data class Obligation(val amount: Amount<Currency>,
                       val borrower: AbstractParty,
                       val paid: Amount<Currency> = Amount(0, amount.token),
                       override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState {
+
     override val participants: List<AbstractParty> get() = listOf(lender, borrower)
+
     fun pay(amountToPay: Amount<Currency>) = copy(paid = paid + amountToPay)
     fun withNewLender(newLender: Party) = copy(lender = newLender)
+
     override fun toString(): String {
         val lenderString = (lender as? Party)?.name?.organisation ?: lender.owningKey.toBase58String()
         val borrowerString = (borrower as? Party)?.name?.organisation ?: borrower.owningKey.toBase58String()

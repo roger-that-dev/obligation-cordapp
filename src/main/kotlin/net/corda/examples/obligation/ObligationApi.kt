@@ -1,52 +1,32 @@
-//package net.corda.examples.obligation
-//
-//import net.corda.client.rpc.notUsed
-//import net.corda.contracts.asset.Cash
-//import net.corda.core.contracts.Amount
-//import net.corda.core.contracts.ContractState
-//import net.corda.core.contracts.StateAndRef
-//import net.corda.core.contracts.UniqueIdentifier
-//import net.corda.core.getOrThrow
-//import net.corda.core.messaging.CordaRPCOps
-//import net.corda.iou.flow.IOUIssueFlow
-//import net.corda.iou.flow.IOUSettleFlow
-//import net.corda.iou.flow.IOUTransferFlow
-//import net.corda.iou.flow.SelfIssueCashFlow
-//import net.corda.iou.state.IOUState
-//import org.bouncycastle.asn1.x500.X500Name
-//import rx.Observable
-//import java.util.*
-//import javax.ws.rs.GET
-//import javax.ws.rs.Path
-//import javax.ws.rs.Produces
-//import javax.ws.rs.QueryParam
-//import javax.ws.rs.core.MediaType
-//import javax.ws.rs.core.Response
-//
-//val SERVICE_NODE_NAMES = listOf(
-//        X500Name("CN=Controller,O=R3,L=London,C=UK"),
-//        X500Name("CN=NetworkMapService,O=R3,L=London,C=UK"))
-//
-///**
-// * This API is accessible from /api/obligation. The endpoint paths specified below are relative to it.
-// * We've defined a bunch of endpoints to deal with IOUs, cash and the various operations you can perform with them.
-// */
-//@Path("obligation")
-//class IOUApi(val services: CordaRPCOps) {
-//    private val myLegalName = services.nodeIdentity().legalIdentity.name
-//
-//    /**
-//     * Returns the node's name.
-//     */
-//    @GET
-//    @Path("me")
-//    @Produces(MediaType.APPLICATION_JSON)
-//    fun whoami() = mapOf("me" to myLegalName)
-//
-//    /**
-//     * Returns all parties registered with the [NetworkMapService]. These names can be used to look up identities
-//     * using the [IdentityService].
-//     */
+package net.corda.examples.obligation
+
+import net.corda.core.messaging.CordaRPCOps
+import javax.ws.rs.GET
+import javax.ws.rs.Path
+import javax.ws.rs.Produces
+import javax.ws.rs.core.MediaType
+
+
+/**
+ * This API is accessible from /api/obligation. The endpoint paths specified below are relative to it.
+ * We've defined a bunch of endpoints to deal with IOUs, cash and the various operations you can perform with them.
+ */
+@Path("obligation")
+class ObligationApi(val services: CordaRPCOps) {
+    private val myLegalName = services.nodeInfo().legalIdentities.first()
+
+    /**
+     * Returns the node's name.
+     */
+    @GET
+    @Path("me")
+    @Produces(MediaType.APPLICATION_JSON)
+    fun whoami() = mapOf("me" to myLegalName)
+
+    /**
+     * Returns all parties registered with the [NetworkMapService]. These names can be used to look up identities
+     * using the [IdentityService].
+     */
 //    @GET
 //    @Path("peers")
 //    @Produces(MediaType.APPLICATION_JSON)
@@ -88,7 +68,7 @@
 //    @Produces(MediaType.APPLICATION_JSON)
 //    // Display cash balances.
 //    fun getCashBalances(): Map<Currency, Amount<Currency>> = services.getCashBalances()
-//
+
 //    /**
 //     * Initiates a flow to agree an IOU between two parties.
 //     */
@@ -180,11 +160,5 @@
 //
 //        return Response.status(status).entity(message).build()
 //    }
-//
-//    // Helper method to get just the snapshot portion of an RPC call which also returns an Observable of updates. It's
-//    // important to unsubscribe from this Observable if we're not going to use it as otherwise we leak resources on the server.
-//    private val <A> Pair<A, Observable<*>>.justSnapshot: A get() {
-//        second.notUsed()
-//        return first
-//    }
-//}
+
+}
