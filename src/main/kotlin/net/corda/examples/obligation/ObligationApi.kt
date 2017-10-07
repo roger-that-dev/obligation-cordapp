@@ -3,6 +3,7 @@ package net.corda.examples.obligation
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.ContractState
 import net.corda.core.contracts.StateAndRef
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.messaging.CordaRPCOps
 import net.corda.core.utilities.OpaqueBytes
@@ -94,8 +95,8 @@ class ObligationApi(val services: CordaRPCOps) {
                  @QueryParam(value = "currency") currency: String,
                  @QueryParam(value = "party") party: String): Response {
         // 1. Get party objects for the counterparty.
-        val lenderIdentity = services.partiesFromName(party, false).singleOrNull() ?:
-                throw IllegalStateException("Couldn't lookup node identity for $party.")
+        val lenderIdentity = services.partiesFromName(party, exactMatch = false).singleOrNull()
+                ?: throw IllegalStateException("Couldn't lookup node identity for $party.")
 
         // 2. Create an amount object.
         val issueAmount = Amount(amount.toLong() * 100, Currency.getInstance(currency))
@@ -118,29 +119,32 @@ class ObligationApi(val services: CordaRPCOps) {
         // 4. Return the result.
         return Response.status(status).entity(message).build()
     }
-//
-//    /**
-//     * tranfers an IOU specified by [linearId] to a new party.
-//     */
-//    @GET
-//    @Path("transfer-obligation")
-//    fun transferIOU(@QueryParam(value = "id") id: String,
-//                    @QueryParam(value = "party") party: String): Response {
-//        val linearId = UniqueIdentifier.Companion.Companion.fromString(id)
-//        val newLender = services.partyFromName(party) ?: throw IllegalArgumentException("Unknown party name.")
-//
-//        val (status, message) = try {
-//            val flowHandle = services.startTrackedFlowDynamic(net.corda.iou.flow.IOUTransferFlow.Initiator::class.java, linearId, newLender)
-//            // We don't care about the signed tx returned by the flow, only that it finishes successfully
-//            flowHandle.use { flowHandle.returnValue.getOrThrow() }
-//            Response.Status.CREATED to "IOU $id transferred to $party."
-//        } catch (e: Exception) {
-//            Response.Status.BAD_REQUEST to e.message
-//        }
-//
-//        return Response.status(status).entity(message).build()
-//    }
-//
+
+    @GET
+    @Path("transfer-obligation")
+    fun transferObligation(@QueryParam(value = "id") id: String,
+                           @QueryParam(value = "party") party: String): Response {
+        val linearId = UniqueIdentifier.fromString(id)
+        val newLender = services.partiesFromName(party, exactMatch = false).singleOrNull()
+                ?: throw IllegalStateException("Couldn't lookup node identity for $party.")
+
+        val (status, message) = try {
+            val flowHandle = services.startTrackedFlowDynamic(
+                    TransferObligation.Initiator::class.java,
+                    linearId,
+                    newLender,
+                    true
+            )
+
+            flowHandle.use { flowHandle.returnValue.getOrThrow() }
+            Response.Status.CREATED to "Obligation $id transferred to $party."
+        } catch (e: Exception) {
+            Response.Status.BAD_REQUEST to e.message
+        }
+
+        return Response.status(status).entity(message).build()
+    }
+
 //    /**
 //     * Settles an IOU. Requires cash in the right currency to be able to settle.
 //     */

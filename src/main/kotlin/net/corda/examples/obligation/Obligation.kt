@@ -22,6 +22,6 @@ data class Obligation(val amount: Amount<Currency>,
     override fun toString(): String {
         val lenderString = (lender as? Party)?.name?.organisation ?: lender.owningKey.toBase58String()
         val borrowerString = (borrower as? Party)?.name?.organisation ?: borrower.owningKey.toBase58String()
-        return "IOU($linearId): $borrowerString owes $lenderString $amount and has paid $paid so far."
+        return "Obligation($linearId): $borrowerString owes $lenderString $amount and has paid $paid so far."
     }
 }
