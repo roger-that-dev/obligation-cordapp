@@ -3,7 +3,10 @@ package net.corda.examples.obligation
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.transactions.SignedTransaction
+import net.corda.core.utilities.OpaqueBytes
 import net.corda.core.utilities.getOrThrow
+import net.corda.finance.flows.CashIssueFlow
+import net.corda.finance.flows.CashIssueFlow.IssueRequest
 import net.corda.node.internal.StartedNode
 import net.corda.testing.chooseIdentity
 import net.corda.testing.node.MockNetwork
@@ -60,5 +63,23 @@ open class ObligationTests {
         val newLenderIdentity = newLender.info.chooseIdentity()
         val flow = TransferObligation.Initiator(linearId, newLenderIdentity, anonymous)
         return lender.services.startFlow(flow).resultFuture.getOrThrow()
+    }
+
+    protected fun settleObligation(linearId: UniqueIdentifier,
+                                   borrower: StartedNode<MockNetwork.MockNode>,
+                                   amount: Amount<Currency>
+    ): SignedTransaction {
+        val flow = SettleObligation.Initiator(linearId, amount)
+        return borrower.services.startFlow(flow).resultFuture.getOrThrow()
+    }
+
+    protected fun selfIssueCash(party: StartedNode<MockNetwork.MockNode>,
+                                amount: Amount<Currency>): SignedTransaction {
+        val notary = party.services.networkMapCache.notaryIdentities.firstOrNull()
+                ?: throw IllegalStateException("Could not find a notary.")
+        val issueRef = OpaqueBytes.of(0)
+        val issueRequest = IssueRequest(amount, issueRef, notary)
+        val flow = CashIssueFlow(issueRequest)
+        return party.services.startFlow(flow).resultFuture.getOrThrow().stx
     }
 }

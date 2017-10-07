@@ -2,8 +2,8 @@ package net.corda.examples.obligation
 
 import net.corda.finance.POUNDS
 import net.corda.testing.chooseIdentity
+import org.jgroups.util.Util.assertEquals
 import org.junit.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class TransferObligationTests : ObligationTests() {
@@ -63,9 +63,9 @@ class TransferObligationTests : ObligationTests() {
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as Obligation
 
         // Transfer obligation.
-        assertFailsWith<IllegalStateException> { transferObligation(issuedObligation.linearId, a, c, anonymous = false) }
-        net.waitQuiescent()
-
+        assertFailsWith<IllegalStateException> {
+            transferObligation(issuedObligation.linearId, a, c, anonymous = false)
+        }
     }
 
 }
