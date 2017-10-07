@@ -1,101 +1,123 @@
 package net.corda.examples.obligation
 
+import net.corda.core.contracts.Amount
+import net.corda.core.contracts.ContractState
+import net.corda.core.contracts.StateAndRef
+import net.corda.core.identity.CordaX500Name
 import net.corda.core.messaging.CordaRPCOps
+import net.corda.core.utilities.OpaqueBytes
+import net.corda.core.utilities.getOrThrow
+import net.corda.finance.contracts.asset.Cash
+import net.corda.finance.contracts.getCashBalances
+import net.corda.finance.flows.CashIssueFlow
+import java.util.*
 import javax.ws.rs.GET
 import javax.ws.rs.Path
 import javax.ws.rs.Produces
+import javax.ws.rs.QueryParam
 import javax.ws.rs.core.MediaType
+import javax.ws.rs.core.Response
 
-
-/**
- * This API is accessible from /api/obligation. The endpoint paths specified below are relative to it.
- * We've defined a bunch of endpoints to deal with IOUs, cash and the various operations you can perform with them.
- */
 @Path("obligation")
 class ObligationApi(val services: CordaRPCOps) {
-    private val myLegalName = services.nodeInfo().legalIdentities.first()
 
-    /**
-     * Returns the node's name.
-     */
+    private val myIdentity = services.nodeInfo().legalIdentities.first()
+
     @GET
     @Path("me")
     @Produces(MediaType.APPLICATION_JSON)
-    fun whoami() = mapOf("me" to myLegalName)
+    fun me() = mapOf("me" to myIdentity)
 
-    /**
-     * Returns all parties registered with the [NetworkMapService]. These names can be used to look up identities
-     * using the [IdentityService].
-     */
-//    @GET
-//    @Path("peers")
-//    @Produces(MediaType.APPLICATION_JSON)
-//    fun getPeers(): Map<String, List<X500Name>> {
-//        val (nodeInfo, nodeUpdates) = services.networkMapUpdates()
-//        nodeUpdates.notUsed()
-//        return mapOf("peers" to nodeInfo
-//                .map { it.legalIdentity.name }
-//                .filter { it != myLegalName && it !in SERVICE_NODE_NAMES })
-//    }
-//
-//    /**
-//     * Displays all IOU states that exist in the node's vault.
-//     */
-//    @GET
-//    @Path("ious")
-//    @Produces(MediaType.APPLICATION_JSON)
-//    // Filter by state type: IOU.
-//    fun getIOUs(): List<StateAndRef<ContractState>> {
-//        return services.vaultAndUpdates().justSnapshot.filter { it.state.data is net.corda.iou.state.IOUState }
-//    }
-//
-//    /**
-//     * Displays all cash states that exist in the node's vault.
-//     */
-//    @GET
-//    @Path("cash")
-//    @Produces(MediaType.APPLICATION_JSON)
-//    // Filter by state type: Cash.
-//    fun getCash(): List<StateAndRef<ContractState>> {
-//        return services.vaultAndUpdates().justSnapshot.filter { it.state.data is Cash.State }
-//    }
-//
-//    /**
-//     * Displays all cash states that exist in the node's vault.
-//     */
-//    @GET
-//    @Path("cash-balances")
-//    @Produces(MediaType.APPLICATION_JSON)
-//    // Display cash balances.
-//    fun getCashBalances(): Map<Currency, Amount<Currency>> = services.getCashBalances()
+    @GET
+    @Path("peers")
+    @Produces(MediaType.APPLICATION_JSON)
+    fun peers(): Map<String, List<CordaX500Name>> {
+        val networkMap = services.networkMapSnapshot()
+        return mapOf("peers" to networkMap
+                .filter { nodeInfo -> nodeInfo.legalIdentities.first() != myIdentity }
+                .map { it.legalIdentities.first().name })
+    }
 
-//    /**
-//     * Initiates a flow to agree an IOU between two parties.
-//     */
-//    @GET
-//    @Path("issue-obligation")
-//    fun issueIOU(@QueryParam(value = "amount") amount: Int,
-//                 @QueryParam(value = "currency") currency: String,
-//                 @QueryParam(value = "party") party: String): Response {
-//        // Get party objects for myself and the counterparty.
-//        val me = services.nodeIdentity().legalIdentity
-//        val lender = services.partyFromName(party) ?: throw IllegalArgumentException("Unknown party name.")
-//        // Create a new IOU state using the parameters given.
-//        val state = net.corda.iou.state.IOUState(Amount(amount.toLong() * 100, Currency.getInstance(currency)), lender, me)
-//
-//        // Start the IOUIssueFlow. We block and wait for the flow to return.
-//        val (status, message) = try {
-//            val flowHandle = services.startTrackedFlowDynamic(net.corda.iou.flow.IOUIssueFlow.Initiator::class.java, state, lender)
-//            val result = flowHandle.use { it.returnValue.getOrThrow() }
-//            // Return the response.
-//            Response.Status.CREATED to "Transaction id ${result.id} committed to ledger.\n${result.tx.outputs.single()}"
-//        } catch (e: Exception) {
-//            // For the purposes of this demo app, we do not differentiate by exception type.
-//            Response.Status.BAD_REQUEST to e.message
-//        }
-//
-//        return Response.status(status).entity(message).build()
-//    }
+    @GET
+    @Path("owed-per-currency")
+    @Produces(MediaType.APPLICATION_JSON)
+    fun owedPerCurrency(): Map<Currency, Long> {
+        return services.vaultQuery(Obligation::class.java).states
+                .filter { (state) -> state.data.lender != myIdentity }
+                .map { (state) -> state.data.amount }
+                .groupBy({ amount -> amount.token }, { (quantity) -> quantity })
+                .mapValues { it.value.sum() }
+    }
+
+    @GET
+    @Path("obligations")
+    @Produces(MediaType.APPLICATION_JSON)
+    fun obligations(): List<StateAndRef<ContractState>> = services.vaultQuery(Obligation::class.java).states
+
+    @GET
+    @Path("cash")
+    @Produces(MediaType.APPLICATION_JSON)
+    fun cash(): List<StateAndRef<Cash.State>> = services.vaultQuery(Cash.State::class.java).states
+
+    @GET
+    @Path("cash-balances")
+    @Produces(MediaType.APPLICATION_JSON)
+    fun getCashBalances(): Map<Currency, Amount<Currency>> = services.getCashBalances()
+
+    @GET
+    @Path("self-issue-cash")
+    fun selfIssueCash(@QueryParam(value = "amount") amount: Int,
+                      @QueryParam(value = "currency") currency: String): Response {
+
+        // 1. Prepare issue request.
+        val issueAmount = Amount(amount.toLong() * 100, Currency.getInstance(currency))
+        val notary = services.notaryIdentities().firstOrNull() ?: throw IllegalStateException("Could not find a notary.")
+        val issueRef = OpaqueBytes.of(0)
+        val issueRequest = CashIssueFlow.IssueRequest(issueAmount, issueRef, notary)
+
+        // 2. Start flow and wait for response.
+        val (status, message) = try {
+            val flowHandle = services.startTrackedFlowDynamic(CashIssueFlow::class.java, issueRequest)
+            val result = flowHandle.use { it.returnValue.getOrThrow() }
+            Response.Status.CREATED to result.toString()
+        } catch (e: Exception) {
+            Response.Status.BAD_REQUEST to e.message
+        }
+
+        // 3. Return the response.
+        return Response.status(status).entity(message).build()
+    }
+
+    @GET
+    @Path("issue-obligation")
+    fun issueIOU(@QueryParam(value = "amount") amount: Int,
+                 @QueryParam(value = "currency") currency: String,
+                 @QueryParam(value = "party") party: String): Response {
+        // 1. Get party objects for the counterparty.
+        val lenderIdentity = services.partiesFromName(party, false).singleOrNull() ?:
+                throw IllegalStateException("Couldn't lookup node identity for $party.")
+
+        // 2. Create an amount object.
+        val issueAmount = Amount(amount.toLong() * 100, Currency.getInstance(currency))
+
+        // 3. Start the IssueObligation flow. We block and wait for the flow to return.
+        val (status, message) = try {
+            val flowHandle = services.startTrackedFlowDynamic(
+                    IssueObligation.Initiator::class.java,
+                    issueAmount,
+                    lenderIdentity,
+                    true
+            )
+
+            val result = flowHandle.use { it.returnValue.getOrThrow() }
+            Response.Status.CREATED to "Transaction id ${result.id} committed to ledger.\n${result.tx.outputs.single()}"
+        } catch (e: Exception) {
+            Response.Status.BAD_REQUEST to e.message
+        }
+
+        // 4. Return the result.
+        return Response.status(status).entity(message).build()
+    }
 //
 //    /**
 //     * tranfers an IOU specified by [linearId] to a new party.
@@ -141,24 +163,5 @@ class ObligationApi(val services: CordaRPCOps) {
 //        return Response.status(status).entity(message).build()
 //    }
 //
-//    /**
-//     * Helper end-point to issue some cash to ourselves.
-//     */
-//    @GET
-//    @Path("self-issue-cash")
-//    fun selfIssueCash(@QueryParam(value = "amount") amount: Int,
-//                      @QueryParam(value = "currency") currency: String): Response {
-//        val issueAmount = Amount(amount.toLong() * 100, Currency.getInstance(currency))
-//
-//        val (status, message) = try {
-//            val flowHandle = services.startTrackedFlowDynamic(net.corda.iou.flow.SelfIssueCashFlow::class.java, issueAmount)
-//            val cashState = flowHandle.use { it.returnValue.getOrThrow() }
-//            Response.Status.CREATED to cashState.toString()
-//        } catch (e: Exception) {
-//            Response.Status.BAD_REQUEST to e.message
-//        }
-//
-//        return Response.status(status).entity(message).build()
-//    }
 
 }

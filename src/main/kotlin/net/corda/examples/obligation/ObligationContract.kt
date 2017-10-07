@@ -13,12 +13,14 @@ class ObligationContract : Contract {
 
     interface Commands : CommandData {
         class Issue : TypeOnlyCommandData(), Commands
+        class Transfer : TypeOnlyCommandData(), Commands
     }
 
     override fun verify(tx: LedgerTransaction): Unit {
         val command = tx.commands.requireSingleCommand<Commands>()
         when (command.value) {
             is Commands.Issue -> verifyIssue(tx, command.signers)
+            is Commands.Transfer -> verifyTransfer(tx, command.signers)
             else -> throw IllegalArgumentException("Unrecognised command.")
         }
     }
@@ -31,6 +33,10 @@ class ObligationContract : Contract {
         "The lender and borrower cannot be the same identity." using (iou.borrower != iou.lender)
         "Both lender and borrower together only may sign obligation issue transaction." using
                 (signers.toSet() == iou.participants.map { it.owningKey }.toSet())
+    }
+
+    private fun verifyTransfer(tx: LedgerTransaction, signers: List<PublicKey>) = requireThat {
+        // TODO: 
     }
 
 }

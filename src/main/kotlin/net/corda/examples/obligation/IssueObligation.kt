@@ -9,7 +9,6 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.seconds
-import net.corda.examples.obligation.ObligationContract
 import net.corda.examples.obligation.ObligationContract.Companion.OBLIGATION_CONTRACT_ID
 import java.util.*
 
@@ -56,11 +55,12 @@ object IssueObligation {
             progressTracker.currentStep = INITIALISING
             val obligation = if (anonymous) createAnonymousObligation() else Obligation(amount, lender, ourIdentity)
             val ourSigningKey = obligation.borrower.owningKey
-            println("Here")
+
             // Step 2. Building.
             progressTracker.currentStep = BUILDING
             val notary = serviceHub.networkMapCache.notaryIdentities.firstOrNull()
                     ?: throw FlowException("No available notary.")
+
             val utx = TransactionBuilder(notary = notary)
                     .addOutputState(obligation, OBLIGATION_CONTRACT_ID)
                     .addCommand(ObligationContract.Commands.Issue(), obligation.participants.map { it.owningKey })

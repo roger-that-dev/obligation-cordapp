@@ -8,8 +8,8 @@ import kotlin.test.assertEquals
 class IssueObligationTests : ObligationTests() {
 
     @Test
-    fun `Issue normal non-anonymous obligation successfully`() {
-        val stx = issueObligation(a, b, 1000.POUNDS)
+    fun `Issue non-anonymous obligation successfully`() {
+        val stx = issueObligation(a, b, 1000.POUNDS, anonymous = false)
 
         net.waitQuiescent()
 

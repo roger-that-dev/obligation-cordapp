@@ -17,7 +17,7 @@ data class Obligation(val amount: Amount<Currency>,
     override val participants: List<AbstractParty> get() = listOf(lender, borrower)
 
     fun pay(amountToPay: Amount<Currency>) = copy(paid = paid + amountToPay)
-    fun withNewLender(newLender: Party) = copy(lender = newLender)
+    fun withNewLender(newLender: AbstractParty) = copy(lender = newLender)
 
     override fun toString(): String {
         val lenderString = (lender as? Party)?.name?.organisation ?: lender.owningKey.toBase58String()
