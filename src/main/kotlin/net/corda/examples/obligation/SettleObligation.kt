@@ -145,6 +145,7 @@ object SettleObligation {
         @Suspendable
         override fun call(): SignedTransaction {
             subFlow(IdentitySyncFlow.Receive(otherFlow))
+
             val flow = object : SignTransactionFlow(otherFlow) {
                 @Suspendable
                 override fun checkTransaction(stx: SignedTransaction) {

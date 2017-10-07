@@ -2,6 +2,8 @@ package net.corda.examples.obligation
 
 import net.corda.core.contracts.*
 import net.corda.core.transactions.LedgerTransaction
+import net.corda.finance.contracts.asset.Cash
+import net.corda.finance.utils.sumCash
 import java.security.PublicKey
 
 class ObligationContract : Contract {
@@ -59,6 +61,51 @@ class ObligationContract : Contract {
     }
 
     private fun verifySettle(tx: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
-        // TODO: Complete this.
+        val obligationInputs = tx.inputsOfType<Obligation>()
+        require(obligationInputs.size == 1) { "There must be one input IOU." }
+
+        // Check there are output cash states.
+        val cash = tx.outputsOfType<Cash.State>()
+        require(cash.isNotEmpty()) { "There must be output cash." }
+
+        // Check that the cash is being assigned to us.
+        val inputObligation = obligationInputs.single()
+        // TODO: How do I check whether the lender is receiving cash when the keys are anonymous?
+        val acceptableCash = cash.filter { it.owner == inputObligation.lender }
+        require(acceptableCash.isNotEmpty()) { "There must be output cash paid to the recipient." }
+
+        // Sum the cash being sent to us (we don't care about the issuer).
+        val sumAcceptableCash = acceptableCash.sumCash().withoutIssuer()
+        val amountOutstanding = inputObligation.amount - inputObligation.paid
+        require(amountOutstanding >= sumAcceptableCash) { "The amount settled cannot be more than the amount outstanding." }
+
+        val obligationOutputs = tx.outputsOfType<Obligation>()
+
+        // Check to see if we need an output IOU or not.
+        if (amountOutstanding == sumAcceptableCash) {
+            // If the IOU has been fully settled then there should be no IOU output state.
+            require(obligationOutputs.isEmpty()) { "There must be no output IOU as it has been fully settled." }
+        } else {
+            // If the IOU has been partially settled then it should still exist.
+            require(obligationOutputs.size == 1) { "There must be one output IOU." }
+
+            // Check only the paid property changes.
+            val outputObligation = obligationOutputs.single()
+            requireThat {
+                "The amount may not change when settling." using (inputObligation.amount == outputObligation.amount)
+                "The borrower may not change when settling." using (inputObligation.borrower == outputObligation.borrower)
+                "The lender may not change when settling." using (inputObligation.lender == outputObligation.lender)
+                "The linearId may not change when settling." using (inputObligation.linearId == outputObligation.linearId)
+            }
+
+            // Check the paid property is updated correctly.
+            require(outputObligation.paid == inputObligation.paid + sumAcceptableCash) {
+                "Paid property incorrectly updated."
+            }
+        }
+
+        // Checks the required parties have signed.
+        "Both lender and borrower together only must sign IOU settle transaction." using
+                (signers == keysFromParticipants(inputObligation))
     }
 }

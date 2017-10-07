@@ -91,9 +91,9 @@ class ObligationApi(val services: CordaRPCOps) {
 
     @GET
     @Path("issue-obligation")
-    fun issueIOU(@QueryParam(value = "amount") amount: Int,
-                 @QueryParam(value = "currency") currency: String,
-                 @QueryParam(value = "party") party: String): Response {
+    fun issueObligation(@QueryParam(value = "amount") amount: Int,
+                        @QueryParam(value = "currency") currency: String,
+                        @QueryParam(value = "party") party: String): Response {
         // 1. Get party objects for the counterparty.
         val lenderIdentity = services.partiesFromName(party, exactMatch = false).singleOrNull()
                 ?: throw IllegalStateException("Couldn't lookup node identity for $party.")
@@ -145,27 +145,30 @@ class ObligationApi(val services: CordaRPCOps) {
         return Response.status(status).entity(message).build()
     }
 
-//    /**
-//     * Settles an IOU. Requires cash in the right currency to be able to settle.
-//     */
-//    @GET
-//    @Path("settle-obligation")
-//    fun settleIOU(@QueryParam(value = "id") id: String,
-//                  @QueryParam(value = "amount") amount: Int,
-//                  @QueryParam(value = "currency") currency: String): Response {
-//        val linearId = UniqueIdentifier.Companion.Companion.fromString(id)
-//        val settleAmount = Amount(amount.toLong() * 100, Currency.getInstance(currency))
-//
-//        val (status, message) = try {
-//            val flowHandle = services.startTrackedFlowDynamic(net.corda.iou.flow.IOUSettleFlow.Initiator::class.java, linearId, settleAmount)
-//            flowHandle.use { flowHandle.returnValue.getOrThrow() }
-//            Response.Status.CREATED to "$amount $currency paid off on IOU id $id."
-//        } catch (e: Exception) {
-//            Response.Status.BAD_REQUEST to e.message
-//        }
-//
-//        return Response.status(status).entity(message).build()
-//    }
-//
+    @GET
+    @Path("settle-obligation")
+    fun settleObligation(@QueryParam(value = "id") id: String,
+                         @QueryParam(value = "amount") amount: Int,
+                         @QueryParam(value = "currency") currency: String): Response {
+        val linearId = UniqueIdentifier.fromString(id)
+        val settleAmount = Amount(amount.toLong() * 100, Currency.getInstance(currency))
+
+        val (status, message) = try {
+            val flowHandle = services.startTrackedFlowDynamic(
+                    SettleObligation.Initiator::class.java,
+                    linearId,
+                    settleAmount,
+                    true
+            )
+
+            flowHandle.use { flowHandle.returnValue.getOrThrow() }
+            Response.Status.CREATED to "$amount $currency paid off on IOU id $id."
+        } catch (e: Exception) {
+            Response.Status.BAD_REQUEST to e.message
+        }
+
+        return Response.status(status).entity(message).build()
+    }
+
 
 }

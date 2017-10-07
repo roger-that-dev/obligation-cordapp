@@ -41,6 +41,7 @@ class SettleObligationTests : ObligationTests() {
     fun `Settle flow fails when borrower pledges too much cash to settle`() {
         // Self issue cash.
         selfIssueCash(a, 1500.POUNDS)
+        net.waitQuiescent()
 
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = false)
@@ -57,6 +58,7 @@ class SettleObligationTests : ObligationTests() {
     fun `Fully settle non-anonymous obligation`() {
         // Self issue cash.
         selfIssueCash(a, 1500.POUNDS)
+        net.waitQuiescent()
 
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = false)
@@ -65,6 +67,7 @@ class SettleObligationTests : ObligationTests() {
 
         // Attempt settlement.
         val settleTransaction = settleObligation(issuedObligation.linearId, a, 1000.POUNDS)
+        net.waitQuiescent()
         assert(settleTransaction.tx.outputsOfType<Obligation>().isEmpty())
 
         // Check both parties have the transaction.
@@ -85,6 +88,7 @@ class SettleObligationTests : ObligationTests() {
 
         // Attempt settlement.
         val settleTransaction = settleObligation(issuedObligation.linearId, a, 1000.POUNDS)
+        net.waitQuiescent()
         assert(settleTransaction.tx.outputsOfType<Obligation>().isEmpty())
 
         // Check both parties have the transaction.
@@ -97,6 +101,7 @@ class SettleObligationTests : ObligationTests() {
     fun `Partially settle non-anonymous obligation with non-anonymous cash payment`() {
         // Self issue cash.
         selfIssueCash(a, 1500.POUNDS)
+        net.waitQuiescent()
 
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = false)
@@ -106,6 +111,7 @@ class SettleObligationTests : ObligationTests() {
         // Attempt settlement.
         val amountToSettle = 500.POUNDS
         val settleTransaction = settleObligation(issuedObligation.linearId, a, amountToSettle, anonymous = false)
+        net.waitQuiescent()
         assert(settleTransaction.tx.outputsOfType<Obligation>().size == 1)
 
         // Check both parties have the transaction.
@@ -136,6 +142,7 @@ class SettleObligationTests : ObligationTests() {
     fun `Partially settle non-anonymous obligation with anonymous cash payment`() {
         // Self issue cash.
         selfIssueCash(a, 1500.POUNDS)
+        net.waitQuiescent()
 
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = false)
@@ -145,6 +152,7 @@ class SettleObligationTests : ObligationTests() {
         // Attempt settlement.
         val amountToSettle = 500.POUNDS
         val settleTransaction = settleObligation(issuedObligation.linearId, a, amountToSettle, anonymous = true)
+        net.waitQuiescent()
         assert(settleTransaction.tx.outputsOfType<Obligation>().size == 1)
 
         // Check both parties have the transaction.
@@ -178,6 +186,7 @@ class SettleObligationTests : ObligationTests() {
     fun `Partially settle anonymous obligation with anonymous cash payment`() {
         // Self issue cash.
         selfIssueCash(a, 1500.POUNDS)
+        net.waitQuiescent()
 
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = true)
@@ -187,6 +196,7 @@ class SettleObligationTests : ObligationTests() {
         // Attempt settlement.
         val amountToSettle = 500.POUNDS
         val settleTransaction = settleObligation(issuedObligation.linearId, a, amountToSettle, anonymous = true)
+        net.waitQuiescent()
         assert(settleTransaction.tx.outputsOfType<Obligation>().size == 1)
 
         // Check both parties have the transaction.
