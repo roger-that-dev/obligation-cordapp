@@ -67,9 +67,10 @@ open class ObligationTests {
 
     protected fun settleObligation(linearId: UniqueIdentifier,
                                    borrower: StartedNode<MockNetwork.MockNode>,
-                                   amount: Amount<Currency>
+                                   amount: Amount<Currency>,
+                                   anonymous: Boolean = true
     ): SignedTransaction {
-        val flow = SettleObligation.Initiator(linearId, amount)
+        val flow = SettleObligation.Initiator(linearId, amount, anonymous)
         return borrower.services.startFlow(flow).resultFuture.getOrThrow()
     }
 
