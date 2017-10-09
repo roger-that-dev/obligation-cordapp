@@ -4,7 +4,6 @@ import net.corda.core.contracts.Amount
 import net.corda.core.contracts.ContractState
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.identity.CordaX500Name
 import net.corda.core.messaging.CordaRPCOps
 import net.corda.core.utilities.OpaqueBytes
 import net.corda.core.utilities.getOrThrow
@@ -32,11 +31,11 @@ class ObligationApi(val services: CordaRPCOps) {
     @GET
     @Path("peers")
     @Produces(MediaType.APPLICATION_JSON)
-    fun peers(): Map<String, List<CordaX500Name>> {
+    fun peers(): Map<String, List<String>> {
         val networkMap = services.networkMapSnapshot()
         return mapOf("peers" to networkMap
                 .filter { nodeInfo -> nodeInfo.legalIdentities.first() != myIdentity }
-                .map { it.legalIdentities.first().name })
+                .map { it.legalIdentities.first().name.organisation })
     }
 
     @GET
@@ -80,7 +79,7 @@ class ObligationApi(val services: CordaRPCOps) {
         val (status, message) = try {
             val flowHandle = services.startTrackedFlowDynamic(CashIssueFlow::class.java, issueRequest)
             val result = flowHandle.use { it.returnValue.getOrThrow() }
-            Response.Status.CREATED to result.toString()
+            Response.Status.CREATED to result.stx.tx.outputs.single().data
         } catch (e: Exception) {
             Response.Status.BAD_REQUEST to e.message
         }
@@ -111,7 +110,7 @@ class ObligationApi(val services: CordaRPCOps) {
             )
 
             val result = flowHandle.use { it.returnValue.getOrThrow() }
-            Response.Status.CREATED to "Transaction id ${result.id} committed to ledger.\n${result.tx.outputs.single()}"
+            Response.Status.CREATED to "Transaction id ${result.id} committed to ledger.\n${result.tx.outputs.single().data}"
         } catch (e: Exception) {
             Response.Status.BAD_REQUEST to e.message
         }
@@ -162,7 +161,7 @@ class ObligationApi(val services: CordaRPCOps) {
             )
 
             flowHandle.use { flowHandle.returnValue.getOrThrow() }
-            Response.Status.CREATED to "$amount $currency paid off on IOU id $id."
+            Response.Status.CREATED to "$amount $currency paid off on obligation id $id."
         } catch (e: Exception) {
             Response.Status.BAD_REQUEST to e.message
         }

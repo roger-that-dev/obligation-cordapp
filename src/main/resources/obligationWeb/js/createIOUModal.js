@@ -23,7 +23,7 @@ angular.module('demoAppModule').controller('CreateIOUModalCtrl', function($http,
             // We define the IOU creation endpoint.
             const issueIOUEndpoint =
                 apiBaseURL +
-                `issue-iou?amount=${amount}&currency=${currency}&party=${party}`;
+                `issue-obligation?amount=${amount}&currency=${currency}&party=${party}`;
 
             // We hit the endpoint to create the IOU and handle success/failure responses.
             $http.get(issueIOUEndpoint).then(
