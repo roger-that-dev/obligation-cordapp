@@ -51,7 +51,8 @@ object TransferObligation {
             // Stage 1. Retrieve obligation specified by linearId from the vault.
             progressTracker.currentStep = PREPARATION
             val queryCriteria = QueryCriteria.LinearStateQueryCriteria(uuid = listOf(linearId.id))
-            val obligationToTransfer = serviceHub.vaultService.queryBy<Obligation>(queryCriteria).states.single()
+            val obligationToTransfer = serviceHub.vaultService.queryBy<Obligation>(queryCriteria).states.singleOrNull()
+                    ?: throw FlowException("Obligation with id $linearId not found.")
             val inputObligation = obligationToTransfer.state.data
 
             // Stage 2. This flow can only be initiated by the current recipient.

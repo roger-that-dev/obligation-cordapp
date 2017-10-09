@@ -39,7 +39,7 @@ class ObligationContract : Contract {
     // This only allows one obligation issuance per transaction.
     private fun verifyIssue(tx: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
         "No inputs should be consumed when issuing an obligation." using (tx.inputStates.isEmpty())
-        "Only one output state should be created when issuing an obligation." using (tx.outputStates.size == 1)
+        "Only one obligation state should be created when issuing an obligation." using (tx.outputStates.size == 1)
         val obligation = tx.outputStates.single() as Obligation
         "A newly issued obligation must have a positive amount." using
                 (obligation.amount > Amount(0, obligation.amount.token))
@@ -50,44 +50,46 @@ class ObligationContract : Contract {
 
     // This only allows one obligation transfer per transaction.
     private fun verifyTransfer(tx: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
-        "An IOU transfer transaction should only consume one input state." using (tx.inputs.size == 1)
-        "An IOU transfer transaction should only create one output state." using (tx.outputs.size == 1)
+        "An obligation transfer transaction should only consume one input state." using (tx.inputs.size == 1)
+        "An obligation transfer transaction should only create one output state." using (tx.outputs.size == 1)
         val input = tx.inputStates.single() as Obligation
         val output = tx.outputStates.single() as Obligation
-        "Only the lender property may change." using (input == output.withNewLender(input.lender))
         "The lender property must change in a transfer." using (input.lender != output.lender)
-        "The borrower, old lender and new lender only must sign an IOU transfer transaction" using
+        "The borrower, old lender and new lender only must sign an obligation transfer transaction" using
                 (signers == (keysFromParticipants(input) `union` keysFromParticipants(output)))
     }
 
     private fun verifySettle(tx: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
+        // Check for the presence of an input obligation state.
         val obligationInputs = tx.inputsOfType<Obligation>()
-        require(obligationInputs.size == 1) { "There must be one input IOU." }
+        require(obligationInputs.size == 1) { "There must be one input obligation." }
 
         // Check there are output cash states.
+        // We don't care about cash inputs, the Cash contract handles those.
         val cash = tx.outputsOfType<Cash.State>()
         require(cash.isNotEmpty()) { "There must be output cash." }
 
         // Check that the cash is being assigned to us.
         val inputObligation = obligationInputs.single()
-        // TODO: How do I check whether the lender is receiving cash when the keys are anonymous?
         val acceptableCash = cash.filter { it.owner == inputObligation.lender }
         require(acceptableCash.isNotEmpty()) { "There must be output cash paid to the recipient." }
 
         // Sum the cash being sent to us (we don't care about the issuer).
         val sumAcceptableCash = acceptableCash.sumCash().withoutIssuer()
         val amountOutstanding = inputObligation.amount - inputObligation.paid
-        require(amountOutstanding >= sumAcceptableCash) { "The amount settled cannot be more than the amount outstanding." }
+        require(amountOutstanding >= sumAcceptableCash) {
+            "The amount settled cannot be more than the amount outstanding."
+        }
 
         val obligationOutputs = tx.outputsOfType<Obligation>()
 
-        // Check to see if we need an output IOU or not.
+        // Check to see if we need an output obligation or not.
         if (amountOutstanding == sumAcceptableCash) {
-            // If the IOU has been fully settled then there should be no IOU output state.
-            require(obligationOutputs.isEmpty()) { "There must be no output IOU as it has been fully settled." }
+            // If the obligation has been fully settled then there should be no obligation output state.
+            require(obligationOutputs.isEmpty()) { "There must be no output obligation as it has been fully settled." }
         } else {
-            // If the IOU has been partially settled then it should still exist.
-            require(obligationOutputs.size == 1) { "There must be one output IOU." }
+            // If the obligation has been partially settled then it should still exist.
+            require(obligationOutputs.size == 1) { "There must be one output obligation." }
 
             // Check only the paid property changes.
             val outputObligation = obligationOutputs.single()
@@ -105,7 +107,7 @@ class ObligationContract : Contract {
         }
 
         // Checks the required parties have signed.
-        "Both lender and borrower together only must sign IOU settle transaction." using
+        "Both lender and borrower together only must sign obligation settle transaction." using
                 (signers == keysFromParticipants(inputObligation))
     }
 }

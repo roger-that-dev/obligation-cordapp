@@ -2,12 +2,11 @@ package net.corda.examples.obligation
 
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.confidential.IdentitySyncFlow
-import net.corda.confidential.SwapIdentitiesFlow
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.*
-import net.corda.core.identity.AnonymousParty
+import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
@@ -45,37 +44,31 @@ object SettleObligation {
             fun tracker() = ProgressTracker(PREPARATION, BUILDING, SIGNING, COLLECTING, FINALISING)
         }
 
+        private fun resolveIdentity(abstractParty: AbstractParty): Party {
+            return serviceHub.identityService.requireWellKnownPartyFromAnonymous(abstractParty)
+        }
+
         @Suspendable
         override fun call(): SignedTransaction {
             // Stage 1. Retrieve obligation specified by linearId from the vault.
             progressTracker.currentStep = PREPARATION
             val queryCriteria = QueryCriteria.LinearStateQueryCriteria(uuid = listOf(linearId.id))
-            val obligationToSettle = serviceHub.vaultService.queryBy<Obligation>(queryCriteria).states.single()
+            val obligationToSettle = serviceHub.vaultService.queryBy<Obligation>(queryCriteria).states.singleOrNull()
+                    ?: throw FlowException("Obligation with id $linearId not found.")
             val inputObligation = obligationToSettle.state.data
 
-            // Stage 2. This flow can only be initiated by the current recipient.
-            val borrowerIdentity = if (inputObligation.borrower is AnonymousParty) {
-                serviceHub.identityService.requireWellKnownPartyFromAnonymous(inputObligation.borrower)
-            } else {
-                inputObligation.borrower
-            }
+            // Stage 2. Resolve the lender and borrower identity if the obligation is anonymous.
+            val borrowerIdentity = resolveIdentity(inputObligation.borrower)
+            val lenderIdentity = resolveIdentity(inputObligation.lender)
 
-            // Stage 3. Resolve identity if the obligation is anonymous.
-            val lenderIdentity = if (inputObligation.lender is AnonymousParty) {
-                serviceHub.identityService.requireWellKnownPartyFromAnonymous(inputObligation.lender)
-            } else {
-                inputObligation.lender as Party
-            }
-
+            // Stage 3. This flow can only be initiated by the current recipient.
             check(borrowerIdentity == ourIdentity) {
                 throw FlowException("Settle Obligation flow must be initiated by the borrower.")
             }
 
             // Stage 4. Check we have enough cash to settle the requested amount.
             val cashBalance = serviceHub.getCashBalance(amount.token)
-            check(cashBalance.quantity > 0L) {
-                throw FlowException("Borrower has no ${amount.token} to settle.")
-            }
+            check(cashBalance.quantity > 0L) { throw FlowException("Borrower has no ${amount.token} to settle.") }
 
             val amountLeftToSettle = inputObligation.amount - inputObligation.paid
             check(cashBalance >= amount) {
@@ -88,8 +81,8 @@ object SettleObligation {
 
             // Stage 5. Create a settle command.
             val settleCommand = Command(
-                    ObligationContract.Commands.Settle(),
-                    inputObligation.participants.map { it.owningKey }
+                    value = ObligationContract.Commands.Settle(),
+                    signers = inputObligation.participants.map { it.owningKey }
             )
 
             // Stage 6. Create a transaction builder. Add the settle command and input obligation.
@@ -101,15 +94,9 @@ object SettleObligation {
                     .addCommand(settleCommand)
 
             // Stage 7. Get some cash from the vault and add a spend to our transaction builder.
-            val lenderPaymentKey = if (anonymous) {
-                // TODO: Is there a flow to get a key and cert only from the counterparty?
-                val txKeys = subFlow(SwapIdentitiesFlow(lenderIdentity))
-                txKeys[lenderIdentity] ?: throw FlowException("Couldn't get lender's conf. identity.")
-            } else {
-                lenderIdentity
-            }
-
-            val (_, cashKeys) = Cash.generateSpend(serviceHub, builder, amount, lenderPaymentKey)
+            // We pay cash to the lenders obligation key.
+            val lenderPaymentKey = inputObligation.lender
+            val (_, cashSigningKeys) = Cash.generateSpend(serviceHub, builder, amount, lenderPaymentKey)
 
             // Stage 8. Only add an output obligation state if the obligation has not been fully settled.
             val amountRemaining = amountLeftToSettle - amount
@@ -121,7 +108,7 @@ object SettleObligation {
             // Stage 9. Verify and sign the transaction.
             progressTracker.currentStep = SIGNING
             builder.verify(serviceHub)
-            val ptx = serviceHub.signInitialTransaction(builder, cashKeys + inputObligation.borrower.owningKey)
+            val ptx = serviceHub.signInitialTransaction(builder, cashSigningKeys + inputObligation.borrower.owningKey)
 
             // Stage 10. Get counterparty signature.
             progressTracker.currentStep = COLLECTING
@@ -130,7 +117,7 @@ object SettleObligation {
             val stx = subFlow(CollectSignaturesFlow(
                     ptx,
                     setOf(session),
-                    cashKeys + inputObligation.borrower.owningKey,
+                    cashSigningKeys + inputObligation.borrower.owningKey,
                     COLLECTING.childProgressTracker())
             )
 
