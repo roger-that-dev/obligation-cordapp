@@ -22,7 +22,7 @@ angular.module('demoAppModule').controller('TransferModalCtrl', function ($http,
 
             const issueIOUEndpoint =
                 apiBaseURL +
-                `transfer-iou?id=${id}&party=${party}`;
+                `transfer-obligation?id=${id}&party=${party}`;
 
             $http.get(issueIOUEndpoint).then(
                 (result) => transferModal.displayMessage(result),

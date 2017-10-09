@@ -232,8 +232,8 @@
                     </thead>
                     <tbody>
                     <tr ng-repeat="iou in demoApp.ious">
-                        <td class="vert-align">{{iou.lender}}</td>
-                        <td class="vert-align">{{iou.borrower}}</td>
+                        <td class="vert-align">{{iou.lender.substring(0, 10)}}</td>
+                        <td class="vert-align">{{iou.borrower.substring(0, 10)}}</td>
                         <td class="vert-align">{{iou.amount}}</td>
                         <td class="vert-align">{{iou.paid}}</td>
                         <td>

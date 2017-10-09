@@ -4,7 +4,7 @@
 angular.module('demoAppModule', ['ui.bootstrap']).controller('DemoAppCtrl', function($http, $location, $uibModal) {
     const demoApp = this;
 
-    const apiBaseURL = "/api/iou/";
+    const apiBaseURL = "/api/obligation/";
 
     // Retrieves the identity of this and other nodes.
     let peers = [];
@@ -75,7 +75,7 @@ angular.module('demoAppModule', ['ui.bootstrap']).controller('DemoAppCtrl', func
     /** Refreshes the front-end. */
     demoApp.refresh = () => {
         // Update the list of IOUs.
-        $http.get(apiBaseURL + "ious").then((response) => demoApp.ious =
+        $http.get(apiBaseURL + "obligations").then((response) => demoApp.ious =
             Object.keys(response.data).map((key) => response.data[key].state.data));
 
         // Update the cash balances.
