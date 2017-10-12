@@ -54,6 +54,7 @@ class ObligationContract : Contract {
         "An obligation transfer transaction should only create one output state." using (tx.outputs.size == 1)
         val input = tx.inputStates.single() as Obligation
         val output = tx.outputStates.single() as Obligation
+        "Only the lender property may change." using (input.withoutLender() == output.withoutLender())
         "The lender property must change in a transfer." using (input.lender != output.lender)
         "The borrower, old lender and new lender only must sign an obligation transfer transaction" using
                 (signers == (keysFromParticipants(input) `union` keysFromParticipants(output)))
