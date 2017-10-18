@@ -1,7 +1,6 @@
 package net.corda.examples.obligation;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 import net.corda.core.contracts.*;
 import net.corda.core.identity.AbstractParty;
 import net.corda.core.transactions.LedgerTransaction;
@@ -20,7 +19,7 @@ import static net.corda.core.contracts.Structures.withoutIssuer;
 import static net.corda.finance.utils.StateSumming.sumCash;
 
 public class ObligationContract implements Contract {
-    public static final String OBLIGATION_CONTRACT_ID = "ObligationContract";
+    public static final String OBLIGATION_CONTRACT_ID = "net.corda.examples.obligation.ObligationContract";
 
     public interface Commands extends CommandData {
         class Issue extends TypeOnlyCommandData implements Commands {
@@ -65,7 +64,8 @@ public class ObligationContract implements Contract {
             Obligation obligation = (Obligation) tx.getOutputStates().get(0);
             req.using("A newly issued obligation must have a positive amount.", obligation.getAmount().getQuantity() > 0);
             req.using("The lender and borrower cannot be the same identity.", obligation.getBorrower() != obligation.getLender());
-            req.using("Both lender and borrower together only may sign obligation issue transaction.", signers == keysFromParticipants(obligation));
+            req.using("Both lender and borrower together only may sign obligation issue transaction.",
+                    signers.equals(keysFromParticipants(obligation)));
             return null;
         });
     }
@@ -81,7 +81,7 @@ public class ObligationContract implements Contract {
             req.using("Only the lender property may change.", input.withoutLender() == output.withoutLender());
             req.using("The lender property must change in a transfer.", input.getLender() != output.getLender());
             req.using("The borrower, old lender and new lender only must sign an obligation transfer transaction",
-                    signers == Sets.union(keysFromParticipants(input), keysFromParticipants(output)));
+                    signers.equals(keysFromParticipants(output)));
             return null;
         });
     }
@@ -129,7 +129,7 @@ public class ObligationContract implements Contract {
             }
 
             // Checks the required parties have signed.
-            req.using("Both lender and borrower together only must sign obligation settle transaction.", signers == keysFromParticipants(inputObligation));
+            req.using("Both lender and borrower together only must sign obligation settle transaction.", signers.equals(keysFromParticipants(inputObligation)));
             return null;
         });
     }

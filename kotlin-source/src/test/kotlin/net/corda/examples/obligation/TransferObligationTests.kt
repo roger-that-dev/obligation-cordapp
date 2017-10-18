@@ -10,12 +10,12 @@ class TransferObligationTests : net.corda.examples.obligation.ObligationTests() 
     fun `Transfer normal non-anonymous obligation successfully`() {
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = false)
-        net.waitQuiescent()
+        network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as net.corda.examples.obligation.Obligation
 
         // Transfer obligation.
         val transferTransaction = transferObligation(issuedObligation.linearId, b, c, anonymous = false)
-        net.waitQuiescent()
+        network.waitQuiescent()
         val transferredObligation = transferTransaction.tx.outputStates.first() as net.corda.examples.obligation.Obligation
 
         // Check the issued obligation with the new lender is the transferred obligation
@@ -33,12 +33,12 @@ class TransferObligationTests : net.corda.examples.obligation.ObligationTests() 
     fun `Transfer anonymous obligation successfully`() {
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = true)
-        net.waitQuiescent()
+        network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as net.corda.examples.obligation.Obligation
 
         // Transfer obligation.
         val transferTransaction = transferObligation(issuedObligation.linearId, b, c, anonymous = true)
-        net.waitQuiescent()
+        network.waitQuiescent()
         val transferredObligation = transferTransaction.tx.outputStates.first() as net.corda.examples.obligation.Obligation
 
         // Check the issued obligation with the new lender is the transferred obligation.
@@ -57,7 +57,7 @@ class TransferObligationTests : net.corda.examples.obligation.ObligationTests() 
     fun `Transfer flow can only be started by lender`() {
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = false)
-        net.waitQuiescent()
+        network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as net.corda.examples.obligation.Obligation
 
         // Transfer obligation.

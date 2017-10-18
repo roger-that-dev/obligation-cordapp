@@ -9,7 +9,10 @@ import net.corda.testing.*
 import org.junit.After
 import org.junit.Before
 
-open class ObligationContractUnitTests {
+/**
+ * A base class to reduce the boilerplate when writing obligation contract tests.
+ */
+abstract class ObligationContractUnitTests {
     @Before
     fun setup() {
         setCordappPackages("net.corda.examples.obligation", "net.corda.testing.contracts")

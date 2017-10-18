@@ -3,6 +3,7 @@ package net.corda.examples.obligation
 import net.corda.core.contracts.withoutIssuer
 import net.corda.core.flows.FlowException
 import net.corda.finance.POUNDS
+import net.corda.finance.contracts.asset.Cash
 import net.corda.testing.chooseIdentity
 import net.corda.testing.node.MockNetwork
 
@@ -12,7 +13,7 @@ class SettleObligationTests : ObligationTests() {
     private fun getCashoutputByOwner(
             cashStates: List<net.corda.finance.contracts.asset.Cash.State>,
             node: net.corda.node.internal.StartedNode<MockNetwork.MockNode>
-    ): net.corda.finance.contracts.asset.Cash.State {
+    ): Cash.State {
         return cashStates.filter { cashState ->
             val cashOwner = node.services.identityService.requireWellKnownPartyFromAnonymous(cashState.owner)
             cashOwner == node.info.chooseIdentity()
@@ -23,7 +24,7 @@ class SettleObligationTests : ObligationTests() {
     fun `Settle flow can only be started by borrower`() {
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = false)
-        net.waitQuiescent()
+        network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as net.corda.examples.obligation.Obligation
 
         // Attempt settlement.
@@ -36,7 +37,7 @@ class SettleObligationTests : ObligationTests() {
     fun `Settle flow fails when borrower has no cash`() {
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = false)
-        net.waitQuiescent()
+        network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as net.corda.examples.obligation.Obligation
 
         // Attempt settlement.
@@ -49,11 +50,11 @@ class SettleObligationTests : ObligationTests() {
     fun `Settle flow fails when borrower pledges too much cash to settle`() {
         // Self issue cash.
         selfIssueCash(a, 1500.POUNDS)
-        net.waitQuiescent()
+        network.waitQuiescent()
 
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = false)
-        net.waitQuiescent()
+        network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as net.corda.examples.obligation.Obligation
 
         // Attempt settlement.
@@ -66,16 +67,16 @@ class SettleObligationTests : ObligationTests() {
     fun `Fully settle non-anonymous obligation`() {
         // Self issue cash.
         selfIssueCash(a, 1500.POUNDS)
-        net.waitQuiescent()
+        network.waitQuiescent()
 
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = false)
-        net.waitQuiescent()
+        network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as net.corda.examples.obligation.Obligation
 
         // Attempt settlement.
         val settleTransaction = settleObligation(issuedObligation.linearId, a, 1000.POUNDS)
-        net.waitQuiescent()
+        network.waitQuiescent()
         assert(settleTransaction.tx.outputsOfType<net.corda.examples.obligation.Obligation>().isEmpty())
 
         // Check both parties have the transaction.
@@ -91,12 +92,12 @@ class SettleObligationTests : ObligationTests() {
 
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = true)
-        net.waitQuiescent()
+        network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as net.corda.examples.obligation.Obligation
 
         // Attempt settlement.
         val settleTransaction = settleObligation(issuedObligation.linearId, a, 1000.POUNDS)
-        net.waitQuiescent()
+        network.waitQuiescent()
         assert(settleTransaction.tx.outputsOfType<net.corda.examples.obligation.Obligation>().isEmpty())
 
         // Check both parties have the transaction.
@@ -109,17 +110,17 @@ class SettleObligationTests : ObligationTests() {
     fun `Partially settle non-anonymous obligation with non-anonymous cash payment`() {
         // Self issue cash.
         selfIssueCash(a, 1500.POUNDS)
-        net.waitQuiescent()
+        network.waitQuiescent()
 
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = false)
-        net.waitQuiescent()
+        network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as net.corda.examples.obligation.Obligation
 
         // Attempt settlement.
         val amountToSettle = 500.POUNDS
         val settleTransaction = settleObligation(issuedObligation.linearId, a, amountToSettle, anonymous = false)
-        net.waitQuiescent()
+        network.waitQuiescent()
         assert(settleTransaction.tx.outputsOfType<net.corda.examples.obligation.Obligation>().size == 1)
 
         // Check both parties have the transaction.
@@ -147,17 +148,17 @@ class SettleObligationTests : ObligationTests() {
     fun `Partially settle non-anonymous obligation with anonymous cash payment`() {
         // Self issue cash.
         selfIssueCash(a, 1500.POUNDS)
-        net.waitQuiescent()
+        network.waitQuiescent()
 
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = false)
-        net.waitQuiescent()
+        network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as net.corda.examples.obligation.Obligation
 
         // Attempt settlement.
         val amountToSettle = 500.POUNDS
         val settleTransaction = settleObligation(issuedObligation.linearId, a, amountToSettle, anonymous = true)
-        net.waitQuiescent()
+        network.waitQuiescent()
         assert(settleTransaction.tx.outputsOfType<net.corda.examples.obligation.Obligation>().size == 1)
 
         // Check both parties have the transaction.
@@ -184,17 +185,17 @@ class SettleObligationTests : ObligationTests() {
     fun `Partially settle anonymous obligation with anonymous cash payment`() {
         // Self issue cash.
         selfIssueCash(a, 1500.POUNDS)
-        net.waitQuiescent()
+        network.waitQuiescent()
 
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = true)
-        net.waitQuiescent()
+        network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as net.corda.examples.obligation.Obligation
 
         // Attempt settlement.
         val amountToSettle = 500.POUNDS
         val settleTransaction = settleObligation(issuedObligation.linearId, a, amountToSettle, anonymous = true)
-        net.waitQuiescent()
+        network.waitQuiescent()
         assert(settleTransaction.tx.outputsOfType<net.corda.examples.obligation.Obligation>().size == 1)
 
         // Check both parties have the transaction.

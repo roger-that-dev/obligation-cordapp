@@ -10,7 +10,7 @@ class ObligationContract : Contract {
 
     companion object {
         @JvmStatic
-        val OBLIGATION_CONTRACT_ID = "ObligationContract"
+        val OBLIGATION_CONTRACT_ID = "net.corda.examples.obligation.ObligationContract"
     }
 
     interface Commands : CommandData {

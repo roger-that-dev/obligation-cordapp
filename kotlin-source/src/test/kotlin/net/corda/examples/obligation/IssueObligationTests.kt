@@ -11,7 +11,7 @@ class IssueObligationTests : ObligationTests() {
     fun `Issue non-anonymous obligation successfully`() {
         val stx = issueObligation(a, b, 1000.POUNDS, anonymous = false)
 
-        net.waitQuiescent()
+        network.waitQuiescent()
 
         val aObligation = a.services.loadState(stx.tx.outRef<Obligation>(0).ref).data as Obligation
         val bObligation = b.services.loadState(stx.tx.outRef<Obligation>(0).ref).data as Obligation
@@ -27,7 +27,7 @@ class IssueObligationTests : ObligationTests() {
         val aIdentity = a.services.myInfo.chooseIdentity()
         val bIdentity = b.services.myInfo.chooseIdentity()
 
-        net.waitQuiescent()
+        network.waitQuiescent()
 
         val aObligation = a.services.loadState(stx.tx.outRef<Obligation>(0).ref).data as Obligation
         val bObligation = b.services.loadState(stx.tx.outRef<Obligation>(0).ref).data as Obligation

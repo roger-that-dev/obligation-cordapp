@@ -21,8 +21,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static net.corda.examples.obligation.ObligationContract.OBLIGATION_CONTRACT_ID;
-
 public class IssueObligation {
     @InitiatingFlow
     @StartableByRPC
@@ -110,7 +108,7 @@ public class IssueObligation {
                     .collect(Collectors.toList());
 
             TransactionBuilder utx = new TransactionBuilder(notary)
-                    .addOutputState(obligation, OBLIGATION_CONTRACT_ID)
+                    .addOutputState(obligation, ObligationContract.OBLIGATION_CONTRACT_ID)
                     .addCommand(new ObligationContract.Commands.Issue(), requiredSigners)
                     .setTimeWindow(getServiceHub().getClock().instant(), Duration.ofSeconds(30));
 

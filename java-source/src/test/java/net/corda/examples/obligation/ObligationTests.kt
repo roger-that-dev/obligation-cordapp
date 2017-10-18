@@ -9,8 +9,11 @@ import net.corda.testing.setCordappPackages
 import net.corda.testing.unsetCordappPackages
 import java.util.*
 
-open class ObligationTests {
-    lateinit var net: net.corda.testing.node.MockNetwork
+/**
+ * A base class to reduce the boilerplate when writing obligation flow tests.
+ */
+abstract class ObligationTests {
+    lateinit var network: net.corda.testing.node.MockNetwork
     lateinit var a: net.corda.node.internal.StartedNode<MockNetwork.MockNode>
     lateinit var b: net.corda.node.internal.StartedNode<MockNetwork.MockNode>
     lateinit var c: net.corda.node.internal.StartedNode<MockNetwork.MockNode>
@@ -19,9 +22,9 @@ open class ObligationTests {
     fun setup() {
         setCordappPackages("net.corda.examples.obligation", "net.corda.finance")
 
-        net = MockNetwork(threadPerNode = true)
+        network = MockNetwork(threadPerNode = true)
 
-        val nodes = net.createSomeNodes(3)
+        val nodes = network.createSomeNodes(3)
         a = nodes.partyNodes[0]
         b = nodes.partyNodes[1]
         c = nodes.partyNodes[2]
@@ -34,7 +37,7 @@ open class ObligationTests {
 
     @org.junit.After
     fun tearDown() {
-        net.stopNodes()
+        network.stopNodes()
         unsetCordappPackages()
     }
 
