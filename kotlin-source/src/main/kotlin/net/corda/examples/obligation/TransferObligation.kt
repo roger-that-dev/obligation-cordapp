@@ -86,7 +86,7 @@ object TransferObligation {
                     ?: throw IllegalStateException("No available notaries.")
 
             // Stage 6. Create a transaction builder, then add the states and commands.
-            val builder = TransactionBuilder(notary = notary)
+            val builder = TransactionBuilder(notary)
                     .addInputState(obligationToTransfer)
                     .addOutputState(transferredObligation, OBLIGATION_PROGRAM_ID)
                     .addCommand(transferCommand)

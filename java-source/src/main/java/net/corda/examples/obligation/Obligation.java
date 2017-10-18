@@ -21,16 +21,28 @@ public class Obligation implements LinearState {
     private final Amount<Currency> paid;
     private final UniqueIdentifier linearId;
 
-    public Obligation(Amount<Currency> amount,
-                      AbstractParty lender,
-                      AbstractParty borrower,
-                      Amount<Currency> paid,
-                      UniqueIdentifier linearId) {
+    public Obligation(Amount<Currency> amount, AbstractParty lender, AbstractParty borrower, Amount<Currency> paid, UniqueIdentifier linearId) {
         this.amount = amount;
         this.lender = lender;
         this.borrower = borrower;
         this.paid = paid;
         this.linearId = linearId;
+    }
+
+    public Obligation(Amount<Currency> amount, AbstractParty lender, AbstractParty borrower, Amount<Currency> paid) {
+        this.amount = amount;
+        this.lender = lender;
+        this.borrower = borrower;
+        this.paid = paid;
+        this.linearId = new UniqueIdentifier();
+    }
+
+    public Obligation(Amount<Currency> amount, AbstractParty lender, AbstractParty borrower) {
+        this.amount = amount;
+        this.lender = lender;
+        this.borrower = borrower;
+        this.paid = new Amount<>(0, amount.getToken());
+        this.linearId = new UniqueIdentifier();
     }
 
     public Amount<Currency> getAmount() {

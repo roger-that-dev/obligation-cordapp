@@ -1,6 +1,6 @@
 package net.corda.examples.obligation
 
-import net.corda.examples.obligation.ObligationContract.Companion.OBLIGATION_CONTRACT_ID
+import net.corda.examples.obligation.ObligationContract.OBLIGATION_CONTRACT_ID
 import net.corda.finance.DOLLARS
 import net.corda.testing.*
 import net.corda.testing.contracts.DUMMY_PROGRAM_ID

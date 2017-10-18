@@ -8,6 +8,7 @@ import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
+import net.corda.core.utilities.ProgressTracker.Step
 import net.corda.core.utilities.seconds
 import net.corda.examples.obligation.ObligationContract.Companion.OBLIGATION_CONTRACT_ID
 import java.util.*
@@ -20,15 +21,15 @@ object IssueObligation {
                     val anonymous: Boolean = true) : FlowLogic<SignedTransaction>() {
 
         companion object {
-            object INITIALISING : ProgressTracker.Step("Performing initial steps.")
-            object BUILDING : ProgressTracker.Step("Building and verifying transaction.")
-            object SIGNING : ProgressTracker.Step("signing transaction.")
+            object INITIALISING : Step("Performing initial steps.")
+            object BUILDING : Step("Building and verifying transaction.")
+            object SIGNING : Step("Signing transaction.")
 
-            object COLLECTING : ProgressTracker.Step("Collecting counterparty signature.") {
+            object COLLECTING : Step("Collecting counterparty signature.") {
                 override fun childProgressTracker() = CollectSignaturesFlow.tracker()
             }
 
-            object FINALISING : ProgressTracker.Step("Finalising transaction") {
+            object FINALISING : Step("Finalising transaction.") {
                 override fun childProgressTracker() = FinalityFlow.tracker()
             }
 
@@ -61,7 +62,7 @@ object IssueObligation {
             val notary = serviceHub.networkMapCache.notaryIdentities.firstOrNull()
                     ?: throw FlowException("No available notary.")
 
-            val utx = TransactionBuilder(notary = notary)
+            val utx = TransactionBuilder(notary)
                     .addOutputState(obligation, OBLIGATION_CONTRACT_ID)
                     .addCommand(ObligationContract.Commands.Issue(), obligation.participants.map { it.owningKey })
                     .setTimeWindow(serviceHub.clock.instant(), 30.seconds)

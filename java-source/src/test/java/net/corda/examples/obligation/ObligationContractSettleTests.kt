@@ -3,7 +3,7 @@ package net.corda.examples.obligation
 import net.corda.core.contracts.Amount
 import net.corda.core.identity.AbstractParty
 import net.corda.core.utilities.OpaqueBytes
-import net.corda.examples.obligation.ObligationContract.Companion.OBLIGATION_CONTRACT_ID
+import net.corda.examples.obligation.ObligationContract.OBLIGATION_CONTRACT_ID
 import net.corda.finance.DOLLARS
 import net.corda.finance.POUNDS
 import net.corda.finance.`issued by`
@@ -246,7 +246,7 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
                 input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
                 input(OBLIGATION_CONTRACT_ID) { fiveDollars }
                 output(OBLIGATION_CONTRACT_ID) { fiveDollars.withNewOwner(newOwner = ALICE).ownableState }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.copy(borrower = ALICE, paid = 5.DOLLARS) }
+                output(OBLIGATION_CONTRACT_ID) { tenDollarObligationWithNewBorrower.pay(5.DOLLARS) }
                 command(BOB_PUBKEY) { fiveDollars.withNewOwner(newOwner = BOB).command }
                 command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
                 this `fails with` "The borrower may not change when settling."
@@ -255,7 +255,7 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
                 input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
                 input(OBLIGATION_CONTRACT_ID) { fiveDollars }
                 output(OBLIGATION_CONTRACT_ID) { fiveDollars.withNewOwner(newOwner = ALICE).ownableState }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.copy(amount = 0.DOLLARS, paid = 5.DOLLARS) }
+                output(OBLIGATION_CONTRACT_ID) { tenDollarObligationWithNewAmount.pay(5.DOLLARS) }
                 command(BOB_PUBKEY) { fiveDollars.withNewOwner(newOwner = BOB).command }
                 command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
                 this `fails with` "The amount may not change when settling."
@@ -264,7 +264,7 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
                 input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
                 input(OBLIGATION_CONTRACT_ID) { fiveDollars }
                 output(OBLIGATION_CONTRACT_ID) { fiveDollars.withNewOwner(newOwner = ALICE).ownableState }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.copy(lender = CHARLIE, paid = 5.DOLLARS) }
+                output(OBLIGATION_CONTRACT_ID) { tenDollarObligationWithNewLender.pay(5.DOLLARS) }
                 command(BOB_PUBKEY) { fiveDollars.withNewOwner(newOwner = BOB).command }
                 command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
                 this `fails with` "The lender may not change when settling."
