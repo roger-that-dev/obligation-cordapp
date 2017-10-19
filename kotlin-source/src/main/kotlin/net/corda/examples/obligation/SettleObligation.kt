@@ -8,8 +8,6 @@ import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.*
 import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
-import net.corda.core.node.services.queryBy
-import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
@@ -23,8 +21,7 @@ object SettleObligation {
     @StartableByRPC
     class Initiator(val linearId: UniqueIdentifier,
                     val amount: Amount<Currency>,
-                    val anonymous: Boolean = true
-    ) : FlowLogic<SignedTransaction>() {
+                    val anonymous: Boolean = true) : ObligationBaseFlow() {
 
         override val progressTracker: ProgressTracker = tracker()
 
@@ -44,17 +41,11 @@ object SettleObligation {
             fun tracker() = ProgressTracker(PREPARATION, BUILDING, SIGNING, COLLECTING, FINALISING)
         }
 
-        private fun resolveIdentity(abstractParty: AbstractParty): Party {
-            return serviceHub.identityService.requireWellKnownPartyFromAnonymous(abstractParty)
-        }
-
         @Suspendable
         override fun call(): SignedTransaction {
             // Stage 1. Retrieve obligation specified by linearId from the vault.
             progressTracker.currentStep = PREPARATION
-            val queryCriteria = QueryCriteria.LinearStateQueryCriteria(uuid = listOf(linearId.id))
-            val obligationToSettle = serviceHub.vaultService.queryBy<Obligation>(queryCriteria).states.singleOrNull()
-                    ?: throw FlowException("Obligation with id $linearId not found.")
+            val obligationToSettle = getObligationByLinearId(linearId)
             val inputObligation = obligationToSettle.state.data
 
             // Stage 2. Resolve the lender and borrower identity if the obligation is anonymous.
@@ -68,28 +59,25 @@ object SettleObligation {
 
             // Stage 4. Check we have enough cash to settle the requested amount.
             val cashBalance = serviceHub.getCashBalance(amount.token)
-            check(cashBalance.quantity > 0L) { throw FlowException("Borrower has no ${amount.token} to settle.") }
-
             val amountLeftToSettle = inputObligation.amount - inputObligation.paid
+            check(cashBalance.quantity > 0L) {
+                throw FlowException("Borrower has no ${amount.token} to settle.")
+            }
             check(cashBalance >= amount) {
                 throw FlowException("Borrower has only $cashBalance but needs $amount to settle.")
             }
-
             check(amountLeftToSettle >= amount) {
-                throw FlowException("There's only $amountLeftToSettle but you pledged $amount.")
+                throw FlowException("There's only $amountLeftToSettle left to settle but you pledged $amount.")
             }
 
             // Stage 5. Create a settle command.
             val settleCommand = Command(
-                    value = ObligationContract.Commands.Settle(),
-                    signers = inputObligation.participants.map { it.owningKey }
-            )
+                    ObligationContract.Commands.Settle(),
+                    inputObligation.participants.map { it.owningKey })
 
             // Stage 6. Create a transaction builder. Add the settle command and input obligation.
             progressTracker.currentStep = BUILDING
-            val notary = serviceHub.networkMapCache.notaryIdentities.firstOrNull()
-                    ?: throw IllegalStateException("No available notaries.")
-            val builder = TransactionBuilder(notary = notary)
+            val builder = TransactionBuilder(firstNotary)
                     .addInputState(obligationToSettle)
                     .addCommand(settleCommand)
 
@@ -132,15 +120,7 @@ object SettleObligation {
         @Suspendable
         override fun call(): SignedTransaction {
             subFlow(IdentitySyncFlow.Receive(otherFlow))
-
-            val flow = object : SignTransactionFlow(otherFlow) {
-                @Suspendable
-                override fun checkTransaction(stx: SignedTransaction) {
-                    // TODO: Add some checking.
-                }
-            }
-
-            val stx = subFlow(flow)
+            val stx = subFlow(SignTxFlowNoChecking(otherFlow))
             return waitForLedgerCommit(stx.id)
         }
     }

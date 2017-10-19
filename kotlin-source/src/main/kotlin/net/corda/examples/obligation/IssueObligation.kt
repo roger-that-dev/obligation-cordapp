@@ -18,7 +18,7 @@ object IssueObligation {
     @StartableByRPC
     class Initiator(val amount: Amount<Currency>,
                     val lender: Party,
-                    val anonymous: Boolean = true) : FlowLogic<SignedTransaction>() {
+                    val anonymous: Boolean = true) : ObligationBaseFlow() {
 
         companion object {
             object INITIALISING : Step("Performing initial steps.")
@@ -39,18 +39,6 @@ object IssueObligation {
         override val progressTracker: ProgressTracker = tracker()
 
         @Suspendable
-        fun createAnonymousObligation(): Obligation {
-            val txKeys = subFlow(SwapIdentitiesFlow(lender))
-
-            check(txKeys.size == 2) { "Something went wrong when generating confidential identities." }
-
-            val anonymousMe = txKeys[ourIdentity] ?: throw FlowException("Couldn't create our conf. identity.")
-            val anonymousLender = txKeys[lender] ?: throw FlowException("Couldn't create lender's conf. identity.")
-
-            return Obligation(amount, anonymousLender, anonymousMe)
-        }
-
-        @Suspendable
         override fun call(): SignedTransaction {
             // Step 1. Initialisation.
             progressTracker.currentStep = INITIALISING
@@ -59,10 +47,7 @@ object IssueObligation {
 
             // Step 2. Building.
             progressTracker.currentStep = BUILDING
-            val notary = serviceHub.networkMapCache.notaryIdentities.firstOrNull()
-                    ?: throw FlowException("No available notary.")
-
-            val utx = TransactionBuilder(notary)
+            val utx = TransactionBuilder(firstNotary)
                     .addOutputState(obligation, OBLIGATION_CONTRACT_ID)
                     .addCommand(ObligationContract.Commands.Issue(), obligation.participants.map { it.owningKey })
                     .setTimeWindow(serviceHub.clock.instant(), 30.seconds)
@@ -83,10 +68,19 @@ object IssueObligation {
 
             // Step 5. Finalise the transaction.
             progressTracker.currentStep = FINALISING
-            val ftx = subFlow(FinalityFlow(stx, FINALISING.childProgressTracker()))
+            return subFlow(FinalityFlow(stx, FINALISING.childProgressTracker()))
+        }
 
-            // Step 6. Return the finalised transaction.
-            return ftx
+        @Suspendable
+        private fun createAnonymousObligation(): Obligation {
+            val txKeys = subFlow(SwapIdentitiesFlow(lender))
+
+            check(txKeys.size == 2) { "Something went wrong when generating confidential identities." }
+
+            val anonymousMe = txKeys[ourIdentity] ?: throw FlowException("Couldn't create our conf. identity.")
+            val anonymousLender = txKeys[lender] ?: throw FlowException("Couldn't create lender's conf. identity.")
+
+            return Obligation(amount, anonymousLender, anonymousMe)
         }
     }
 
@@ -94,11 +88,7 @@ object IssueObligation {
     class Responder(val otherFlow: FlowSession) : FlowLogic<SignedTransaction>() {
         @Suspendable
         override fun call(): SignedTransaction {
-            val flow = object : SignTransactionFlow(otherFlow) {
-                @Suspendable
-                override fun checkTransaction(stx: SignedTransaction) = Unit // TODO: Do some checking here.
-            }
-            val stx = subFlow(flow)
+            val stx = subFlow(SignTxFlowNoChecking(otherFlow))
             return waitForLedgerCommit(stx.id)
         }
     }

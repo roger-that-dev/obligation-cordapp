@@ -11,13 +11,11 @@ import net.corda.core.contracts.UniqueIdentifier;
 import net.corda.core.flows.*;
 import net.corda.core.identity.AbstractParty;
 import net.corda.core.identity.Party;
-import net.corda.core.node.services.Vault;
-import net.corda.core.node.services.vault.QueryCriteria;
-import net.corda.core.node.services.vault.QueryCriteria.LinearStateQueryCriteria;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.transactions.TransactionBuilder;
 import net.corda.core.utilities.ProgressTracker;
 import net.corda.core.utilities.ProgressTracker.Step;
+import net.corda.examples.obligation.ObligationBaseFlow.SignTxFlowNoChecking;
 import net.corda.finance.contracts.asset.Cash;
 
 import java.security.PublicKey;
@@ -30,11 +28,10 @@ import static net.corda.finance.contracts.GetBalances.getCashBalance;
 public class SettleObligation {
     @InitiatingFlow
     @StartableByRPC
-    static class Initiator extends FlowLogic<SignedTransaction> {
+    static class Initiator extends ObligationBaseFlow {
         private final UniqueIdentifier linearId;
         private final Amount<Currency> amount;
         private final Boolean anonymous;
-
 
         private final Step PREPARATION = new Step("Obtaining IOU from vault.");
         private final Step BUILDING = new Step("Building and verifying transaction.");
@@ -67,31 +64,17 @@ public class SettleObligation {
             return progressTracker;
         }
 
-        private Party resolveIdentity(AbstractParty abstractParty) {
-            return getServiceHub().getIdentityService().requireWellKnownPartyFromAnonymous(abstractParty);
-        }
-
         @Suspendable
         @Override
         public SignedTransaction call() throws FlowException {
             // Stage 1. Retrieve obligation specified by linearId from the vault.
             progressTracker.setCurrentStep(PREPARATION);
-            QueryCriteria queryCriteria = new LinearStateQueryCriteria(
-                    null,
-                    ImmutableList.of(linearId),
-                    Vault.StateStatus.UNCONSUMED,
-                    null);
-
-            List<StateAndRef<Obligation>> obligations = getServiceHub().getVaultService().queryBy(Obligation.class, queryCriteria).getStates();
-            if (obligations.size() != 1) {
-                throw new FlowException(String.format("Obligation with id %s not found.", linearId));
-            }
-            StateAndRef<Obligation> obligationToSettle = obligations.get(0);
-            Obligation inputObligation = obligationToSettle.getState().getData();
+            final StateAndRef<Obligation> obligationToSettle = getObligationByLinearId(linearId);
+            final Obligation inputObligation = obligationToSettle.getState().getData();
 
             // Stage 2. Resolve the lender and borrower identity if the obligation is anonymous.
-            Party borrowerIdentity = resolveIdentity(inputObligation.getBorrower());
-            Party lenderIdentity = resolveIdentity(inputObligation.getLender());
+            final Party borrowerIdentity = resolveIdentity(inputObligation.getBorrower());
+            final Party lenderIdentity = resolveIdentity(inputObligation.getLender());
 
             // Stage 3. This flow can only be initiated by the current recipient.
             if (getOurIdentity() != borrowerIdentity) {
@@ -99,45 +82,38 @@ public class SettleObligation {
             }
 
             // Stage 4. Check we have enough cash to settle the requested amount.
-            Amount<Currency> cashBalance = getCashBalance(getServiceHub(), amount.getToken());
+            final Amount<Currency> cashBalance = getCashBalance(getServiceHub(), amount.getToken());
+            final Amount<Currency> amountLeftToSettle = inputObligation.getAmount().minus(inputObligation.getPaid());
             if (cashBalance.getQuantity() <= 0L) {
                 throw new FlowException(String.format("Borrower has no %s to settle.", amount.getToken()));
-            }
-
-            Amount<Currency> amountLeftToSettle = inputObligation.getAmount().minus(inputObligation.getPaid());
-            if (cashBalance.getQuantity() < amount.getQuantity()) {
+            } else if (cashBalance.getQuantity() < amount.getQuantity()) {
                 throw new FlowException(String.format(
                         "Borrower has only %s but needs %s to settle.", cashBalance, amount));
-            }
-
-            if (amountLeftToSettle.getQuantity() < amount.getQuantity()) {
+            } else if (amountLeftToSettle.getQuantity() < amount.getQuantity()) {
                 throw new FlowException(String.format(
-                        "There's only %s but you pledged %s.", amountLeftToSettle, amount));
+                        "There's only %s left to settle but you pledged %s.", amountLeftToSettle, amount));
             }
 
             // Stage 5. Create a settle command.
-            List<PublicKey> requiredSigners = inputObligation.getParticipants().stream().map(AbstractParty::getOwningKey).collect(Collectors.toList());
-            Command settleCommand = new Command<>(
-                    new ObligationContract.Commands.Settle(),
-                    requiredSigners
-            );
+            final List<PublicKey> requiredSigners = inputObligation.getParticipantKeys();
+            final Command settleCommand = new Command<>(new ObligationContract.Commands.Settle(), requiredSigners);
 
             // Stage 6. Create a transaction builder. Add the settle command and input obligation.
             progressTracker.setCurrentStep(BUILDING);
-            List<Party> notaries = getServiceHub().getNetworkMapCache().getNotaryIdentities();
-            if (notaries.isEmpty()) {
-                throw new FlowException("No available notary.");
-            }
-            final Party notary = notaries.get(0);
-            TransactionBuilder builder = new TransactionBuilder(notary)
+            final TransactionBuilder builder = new TransactionBuilder(getFirstNotary())
                     .addInputState(obligationToSettle)
                     .addCommand(settleCommand);
 
             // Stage 7. Get some cash from the vault and add a spend to our transaction builder.
-            List<PublicKey> cashSigningKeys = Cash.generateSpend(getServiceHub(), builder, amount, inputObligation.getLender(), ImmutableSet.of()).getSecond();
+            final List<PublicKey> cashSigningKeys = Cash.generateSpend(
+                    getServiceHub(),
+                    builder,
+                    amount,
+                    inputObligation.getLender(),
+                    ImmutableSet.of()).getSecond();
 
             // Stage 8. Only add an output obligation state if the obligation has not been fully settled.
-            Amount<Currency> amountRemaining = amountLeftToSettle.minus(amount);
+            final Amount<Currency> amountRemaining = amountLeftToSettle.minus(amount);
             if (amountRemaining.getQuantity() > 0) {
                 Obligation outputObligation = inputObligation.pay(amount);
                 builder.addOutputState(outputObligation, ObligationContract.OBLIGATION_CONTRACT_ID);
@@ -146,17 +122,17 @@ public class SettleObligation {
             // Stage 9. Verify and sign the transaction.
             progressTracker.setCurrentStep(SIGNING);
             builder.verify(getServiceHub());
-            List<PublicKey> signingKeys = new ImmutableList.Builder<PublicKey>()
+            final List<PublicKey> signingKeys = new ImmutableList.Builder<PublicKey>()
                     .addAll(cashSigningKeys)
                     .add(inputObligation.getBorrower().getOwningKey())
                     .build();
-            SignedTransaction ptx = getServiceHub().signInitialTransaction(builder, signingKeys);
+            final SignedTransaction ptx = getServiceHub().signInitialTransaction(builder, signingKeys);
 
             // Stage 10. Get counterparty signature.
             progressTracker.setCurrentStep(COLLECTING);
-            FlowSession session = initiateFlow(lenderIdentity);
+            final FlowSession session = initiateFlow(lenderIdentity);
             subFlow(new IdentitySyncFlow.Send(session, ptx.getTx()));
-            SignedTransaction stx = subFlow(new CollectSignaturesFlow(
+            final SignedTransaction stx = subFlow(new CollectSignaturesFlow(
                     ptx,
                     ImmutableSet.of(session),
                     signingKeys,
@@ -180,19 +156,7 @@ public class SettleObligation {
         @Override
         public SignedTransaction call() throws FlowException {
             subFlow(new IdentitySyncFlow.Receive(otherFlow));
-
-            class SignTxFlow extends SignTransactionFlow {
-                private SignTxFlow(FlowSession otherFlow, ProgressTracker progressTracker) {
-                    super(otherFlow, progressTracker);
-                }
-
-                @Override
-                protected void checkTransaction(SignedTransaction tx) {
-
-                }
-            }
-
-            SignedTransaction stx = subFlow(new SignTxFlow(otherFlow, SignTransactionFlow.Companion.tracker()));
+            SignedTransaction stx = subFlow(new SignTxFlowNoChecking(otherFlow, SignTransactionFlow.Companion.tracker()));
             return waitForLedgerCommit(stx.getId());
         }
     }

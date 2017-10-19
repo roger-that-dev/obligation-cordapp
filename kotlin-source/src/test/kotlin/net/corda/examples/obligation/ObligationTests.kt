@@ -1,24 +1,29 @@
 package net.corda.examples.obligation
 
+import net.corda.core.contracts.StateAndRef
 import net.corda.core.utilities.OpaqueBytes
 import net.corda.core.utilities.getOrThrow
 import net.corda.finance.flows.CashIssueFlow
+import net.corda.node.internal.StartedNode
 import net.corda.testing.chooseIdentity
 import net.corda.testing.node.MockNetwork
+import net.corda.testing.node.MockNetwork.MockNode
 import net.corda.testing.setCordappPackages
 import net.corda.testing.unsetCordappPackages
+import org.junit.After
+import org.junit.Before
 import java.util.*
 
 /**
  * A base class to reduce the boilerplate when writing obligation flow tests.
  */
 abstract class ObligationTests {
-    lateinit var network: net.corda.testing.node.MockNetwork
-    lateinit var a: net.corda.node.internal.StartedNode<MockNetwork.MockNode>
-    lateinit var b: net.corda.node.internal.StartedNode<MockNetwork.MockNode>
-    lateinit var c: net.corda.node.internal.StartedNode<MockNetwork.MockNode>
+    lateinit var network: MockNetwork
+    lateinit var a: StartedNode<MockNode>
+    lateinit var b: StartedNode<MockNode>
+    lateinit var c: StartedNode<MockNode>
 
-    @org.junit.Before
+    @Before
     fun setup() {
         setCordappPackages("net.corda.examples.obligation", "net.corda.finance")
 
@@ -35,7 +40,7 @@ abstract class ObligationTests {
         }
     }
 
-    @org.junit.After
+    @After
     fun tearDown() {
         network.stopNodes()
         unsetCordappPackages()

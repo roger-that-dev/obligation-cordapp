@@ -12,19 +12,16 @@ import net.corda.core.flows.*;
 import net.corda.core.identity.AbstractParty;
 import net.corda.core.identity.AnonymousParty;
 import net.corda.core.identity.Party;
-import net.corda.core.node.services.Vault;
-import net.corda.core.node.services.vault.QueryCriteria;
-import net.corda.core.node.services.vault.QueryCriteria.LinearStateQueryCriteria;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.transactions.TransactionBuilder;
 import net.corda.core.utilities.ProgressTracker;
 import net.corda.core.utilities.ProgressTracker.Step;
+import net.corda.examples.obligation.ObligationBaseFlow.SignTxFlowNoChecking;
 
 import java.security.PublicKey;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static net.corda.finance.contracts.asset.ObligationKt.OBLIGATION_PROGRAM_ID;
 
@@ -32,7 +29,7 @@ public class TransferObligation {
 
     @StartableByRPC
     @InitiatingFlow
-    static class Initiator extends FlowLogic<SignedTransaction> {
+    static class Initiator extends ObligationBaseFlow {
         private final UniqueIdentifier linearId;
         private final Party newLender;
         private final Boolean anonymous;
@@ -79,25 +76,11 @@ public class TransferObligation {
         public SignedTransaction call() throws FlowException {
             // Stage 1. Retrieve obligation specified by linearId from the vault.
             progressTracker.setCurrentStep(PREPARATION);
-            QueryCriteria queryCriteria = new LinearStateQueryCriteria(
-                    null,
-                    ImmutableList.of(linearId),
-                    Vault.StateStatus.UNCONSUMED,
-                    null);
-            List<StateAndRef<Obligation>> obligations = getServiceHub().getVaultService().queryBy(Obligation.class, queryCriteria).getStates();
-            if (obligations.size() != 1) {
-                throw new FlowException(String.format("Obligation with id %s not found.", linearId));
-            }
-            StateAndRef<Obligation> obligationToTransfer = obligations.get(0);
-            Obligation inputObligation = obligationToTransfer.getState().getData();
+            final StateAndRef<Obligation> obligationToTransfer = getObligationByLinearId(linearId);
+            final Obligation inputObligation = obligationToTransfer.getState().getData();
 
             // Stage 2. This flow can only be initiated by the current recipient.
-            AbstractParty lenderIdentity;
-            if (inputObligation.getLender() instanceof AnonymousParty) {
-                lenderIdentity = getServiceHub().getIdentityService().requireWellKnownPartyFromAnonymous(inputObligation.getLender());
-            } else {
-                lenderIdentity = inputObligation.getLender();
-            }
+            final AbstractParty lenderIdentity = getLenderIdentity(inputObligation);
 
             // Stage 3. Abort if the borrower started this flow.
             if (!getOurIdentity().equals(lenderIdentity)) {
@@ -106,70 +89,77 @@ public class TransferObligation {
 
             // Stage 4. Create the new obligation state reflecting a new lender.
             progressTracker.setCurrentStep(BUILDING);
-            Obligation transferredObligation;
-            if (anonymous) {
-                // TODO: Is there a flow to get a key and cert only from the counterparty?
-                HashMap<Party, AnonymousParty> txKeys = subFlow(new SwapIdentitiesFlow(newLender));
-                if (!txKeys.containsKey(newLender)) {
-                    throw new FlowException("Couldn't get lender's conf. identity.");
-                }
-                AnonymousParty anonymousLender = txKeys.get(newLender);
-                transferredObligation = inputObligation.withNewLender(anonymousLender);
-            } else {
-                transferredObligation = inputObligation.withNewLender(newLender);
-            }
+            final Obligation transferredObligation = createOutputObligation(inputObligation);
 
             // Stage 4. Create the transfer command.
-            List<AbstractParty> signers = new ImmutableList.Builder<AbstractParty>()
-                    .addAll(inputObligation.getParticipants())
-                    .add(transferredObligation.getLender()).build();
+            final List<PublicKey> signerKeys = new ImmutableList.Builder<PublicKey>()
+                    .addAll(inputObligation.getParticipantKeys())
+                    .add(transferredObligation.getLender().getOwningKey()).build();
+            final Command transferCommand = new Command<>(new ObligationContract.Commands.Transfer(), signerKeys);
 
-            List<PublicKey> signerKeys = signers.stream().map(AbstractParty::getOwningKey).collect(Collectors.toList());
-            Command transferCommand = new Command<>(new ObligationContract.Commands.Transfer(), signerKeys);
-
-            // Stage 5. Get a reference to a notary
-            List<Party> notaries = getServiceHub().getNetworkMapCache().getNotaryIdentities();
-            if (notaries.isEmpty()) {
-                throw new FlowException("No available notary.");
-            }
-            final Party notary = notaries.get(0);
-
-            // Stage 6. Create a transaction builder, then add the states and commands.
-            TransactionBuilder builder = new TransactionBuilder(notary)
+            // Stage 5. Create a transaction builder, then add the states and commands.
+            final TransactionBuilder builder = new TransactionBuilder(getFirstNotary())
                     .addInputState(obligationToTransfer)
                     .addOutputState(transferredObligation, OBLIGATION_PROGRAM_ID)
                     .addCommand(transferCommand);
 
-            // Stage 7. Verify and sign the transaction.
+            // Stage 6. Verify and sign the transaction.
             progressTracker.setCurrentStep(SIGNING);
             builder.verify(getServiceHub());
-            SignedTransaction ptx = getServiceHub().signInitialTransaction(builder, inputObligation.getLender().getOwningKey());
+            final SignedTransaction ptx = getServiceHub().signInitialTransaction(builder, inputObligation.getLender().getOwningKey());
 
-            // Stage 8. Get a Party object for the borrower.
+            // Stage 7. Get a Party object for the borrower.
             progressTracker.setCurrentStep(SYNCING);
-            Party borrower;
-            if (inputObligation.getBorrower() instanceof AnonymousParty) {
-                borrower = getServiceHub().getIdentityService().requireWellKnownPartyFromAnonymous(inputObligation.getBorrower());
-            } else {
-                borrower = (Party) inputObligation.getBorrower();
-            }
+            final Party borrower = getBorrowerIdentity(inputObligation);
 
-            // Stage 9. Send any keys and certificates so the signers can verify each other's identity.
-            List<Party> counterparties = ImmutableList.of(borrower, newLender);
-            Set<FlowSession> sessions = counterparties.stream().map(this::initiateFlow).collect(Collectors.toSet());
+            // Stage 8. Send any keys and certificates so the signers can verify each other's identity.
+            final Set<FlowSession> sessions = ImmutableSet.of(initiateFlow(borrower), initiateFlow(newLender));
             subFlow(new IdentitySyncFlow.Send(sessions, ptx.getTx(), SYNCING.childProgressTracker()));
 
-            // Stage 10. Collect signatures from the borrower and the new lender.
+            // Stage 9. Collect signatures from the borrower and the new lender.
             progressTracker.setCurrentStep(COLLECTING);
-            SignedTransaction stx = subFlow(new CollectSignaturesFlow(
+            final SignedTransaction stx = subFlow(new CollectSignaturesFlow(
                     ptx,
                     sessions,
                     ImmutableList.of(inputObligation.getLender().getOwningKey()),
                     COLLECTING.childProgressTracker()));
 
-            // Stage 11. Notarise and record, the transaction in our vaults. Send a copy to me as well.
+            // Stage 10. Notarise and record, the transaction in our vaults. Send a copy to me as well.
             progressTracker.setCurrentStep(FINALISING);
             return subFlow(new FinalityFlow(stx, ImmutableSet.of(getOurIdentity())));
+        }
+
+        @Suspendable
+        private AbstractParty getLenderIdentity(Obligation inputObligation) {
+            if (inputObligation.getLender() instanceof AnonymousParty) {
+                return resolveIdentity(inputObligation.getLender());
+            } else {
+                return inputObligation.getLender();
+            }
+        }
+
+        @Suspendable
+        private Obligation createOutputObligation(Obligation inputObligation) throws FlowException {
+            if (anonymous) {
+                // TODO: Is there a flow to get a key and cert only from the counterparty?
+                final HashMap<Party, AnonymousParty> txKeys = subFlow(new SwapIdentitiesFlow(newLender));
+                if (!txKeys.containsKey(newLender)) {
+                    throw new FlowException("Couldn't get lender's conf. identity.");
+                }
+                final AnonymousParty anonymousLender = txKeys.get(newLender);
+                return inputObligation.withNewLender(anonymousLender);
+            } else {
+                return inputObligation.withNewLender(newLender);
+            }
+        }
+
+        @Suspendable
+        private Party getBorrowerIdentity(Obligation inputObligation) {
+            if (inputObligation.getBorrower() instanceof AnonymousParty) {
+                return resolveIdentity(inputObligation.getBorrower());
+            } else {
+                return (Party) inputObligation.getBorrower();
+            }
         }
     }
 
@@ -185,18 +175,7 @@ public class TransferObligation {
         @Override
         public SignedTransaction call() throws FlowException {
             subFlow(new IdentitySyncFlow.Receive(otherFlow));
-            class SignTxFlow extends SignTransactionFlow {
-                private SignTxFlow(FlowSession otherFlow, ProgressTracker progressTracker) {
-                    super(otherFlow, progressTracker);
-                }
-
-                @Override
-                protected void checkTransaction(SignedTransaction tx) {
-
-                }
-            }
-
-            SignedTransaction stx = subFlow(new SignTxFlow(otherFlow, SignTransactionFlow.Companion.tracker()));
+            SignedTransaction stx = subFlow(new SignTxFlowNoChecking(otherFlow, SignTransactionFlow.Companion.tracker()));
             return waitForLedgerCommit(stx.getId());
         }
     }

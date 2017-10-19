@@ -12,6 +12,7 @@ import java.security.PublicKey;
 import java.util.Currency;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static net.corda.core.utilities.EncodingUtils.toBase58String;
 
@@ -88,6 +89,10 @@ public class Obligation implements LinearState {
 
     public Obligation withoutLender() {
         return new Obligation(this.amount, NullKeys.INSTANCE.getNULL_PARTY(), this.borrower, this.paid, this.linearId);
+    }
+
+    public List<PublicKey> getParticipantKeys() {
+        return getParticipants().stream().map(AbstractParty::getOwningKey).collect(Collectors.toList());
     }
 
     @Override

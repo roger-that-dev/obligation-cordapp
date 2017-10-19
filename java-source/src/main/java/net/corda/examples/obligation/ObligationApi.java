@@ -99,19 +99,19 @@ class ObligationApi {
 
         // 1. Prepare issue request.
         final Amount issueAmount = new Amount<>((long) amount * 100, Currency.getInstance(currency));
-        List<Party> notaries = rpcOps.notaryIdentities();
+        final List<Party> notaries = rpcOps.notaryIdentities();
         if (notaries.isEmpty()) {
             throw new IllegalStateException("Could not find a notary.");
         }
-        Party notary = notaries.get(0);
-        OpaqueBytes issueRef = OpaqueBytes.of("".getBytes());
-        CashIssueFlow.IssueRequest issueRequest = new CashIssueFlow.IssueRequest(issueAmount, issueRef, notary);
+        final Party notary = notaries.get(0);
+        final OpaqueBytes issueRef = OpaqueBytes.of("".getBytes());
+        final CashIssueFlow.IssueRequest issueRequest = new CashIssueFlow.IssueRequest(issueAmount, issueRef, notary);
 
         // 2. Start flow and wait for response.
         try {
             final FlowHandle<AbstractCashFlow.Result> flowHandle = rpcOps.startFlowDynamic(CashIssueFlow.class, issueRequest);
-            AbstractCashFlow.Result result = flowHandle.getReturnValue().get();
-            String msg = result.getStx().getTx().getOutputStates().get(0).toString();
+            final AbstractCashFlow.Result result = flowHandle.getReturnValue().get();
+            final String msg = result.getStx().getTx().getOutputStates().get(0).toString();
             return Response.status(CREATED).entity(msg).build();
         } catch (Exception e) {
             return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
@@ -157,7 +157,7 @@ class ObligationApi {
     public Response transferObligation(
             @QueryParam(value = "id") String id,
             @QueryParam(value = "party") String party) {
-        UniqueIdentifier linearId = UniqueIdentifier.Companion.fromString(id);
+        final UniqueIdentifier linearId = UniqueIdentifier.Companion.fromString(id);
 
         final Set<Party> newLenders = rpcOps.partiesFromName(party, false);
         if (newLenders.size() != 1) {
@@ -200,6 +200,4 @@ class ObligationApi {
             return Response.status(BAD_REQUEST).entity(e.getMessage()).build();
         }
     }
-
-
 }
