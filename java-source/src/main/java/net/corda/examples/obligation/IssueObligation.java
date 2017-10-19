@@ -28,7 +28,6 @@ public class IssueObligation {
         private final Amount<Currency> amount;
         private final Party lender;
         private final Boolean anonymous;
-        private final Party ourIdentity = getOurIdentity();
 
         private final Step INITIALISING = new Step("Performing initial steps.");
         private final Step BUILDING = new Step("Performing initial steps.");
@@ -67,7 +66,7 @@ public class IssueObligation {
                 throw new IllegalStateException("Something went wrong when generating confidential identities.");
             }
 
-            if (!txKeys.containsKey(ourIdentity)) {
+            if (!txKeys.containsKey(getOurIdentity())) {
                 throw new FlowException("Couldn't create our conf. identity.");
             }
 
@@ -75,7 +74,7 @@ public class IssueObligation {
                 throw new FlowException("Couldn't create lender's conf. identity.");
             }
 
-            AnonymousParty anonymousMe = txKeys.get(ourIdentity);
+            AnonymousParty anonymousMe = txKeys.get(getOurIdentity());
             AnonymousParty anonymousLender = txKeys.get(lender);
 
             return new Obligation(amount, anonymousLender, anonymousMe);
@@ -90,7 +89,7 @@ public class IssueObligation {
             if (anonymous) {
                 obligation = createAnonymousObligation();
             } else {
-                obligation = new Obligation(amount, lender, ourIdentity);
+                obligation = new Obligation(amount, lender, getOurIdentity());
             }
             final PublicKey ourSigningKey = obligation.getBorrower().getOwningKey();
 

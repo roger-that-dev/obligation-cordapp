@@ -1,6 +1,7 @@
 package net.corda.examples.obligation;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import net.corda.core.contracts.*;
 import net.corda.core.identity.AbstractParty;
 import net.corda.core.transactions.LedgerTransaction;
@@ -8,6 +9,7 @@ import net.corda.finance.contracts.asset.Cash;
 
 import java.security.PublicKey;
 import java.util.Currency;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -36,7 +38,7 @@ public class ObligationContract implements Contract {
     public void verify(LedgerTransaction tx) {
         final CommandWithParties<Commands> command = requireSingleCommand(tx.getCommands(), Commands.class);
         final Commands commandData = command.getValue();
-        final Set<PublicKey> setOfSigners = ImmutableSet.copyOf(command.getSigners());
+        final Set<PublicKey> setOfSigners = new HashSet<>(command.getSigners());
         if (commandData instanceof Commands.Issue) {
             verifyIssue(tx, setOfSigners);
         } else if (commandData instanceof Commands.Transfer) {
@@ -63,7 +65,7 @@ public class ObligationContract implements Contract {
             req.using("Only one obligation state should be created when issuing an obligation.", tx.getOutputStates().size() == 1);
             Obligation obligation = (Obligation) tx.getOutputStates().get(0);
             req.using("A newly issued obligation must have a positive amount.", obligation.getAmount().getQuantity() > 0);
-            req.using("The lender and borrower cannot be the same identity.", obligation.getBorrower() != obligation.getLender());
+            req.using("The lender and borrower cannot be the same identity.", !obligation.getBorrower().equals(obligation.getLender()));
             req.using("Both lender and borrower together only may sign obligation issue transaction.",
                     signers.equals(keysFromParticipants(obligation)));
             return null;
@@ -78,10 +80,10 @@ public class ObligationContract implements Contract {
             req.using("An obligation transfer transaction should only create one output state.", tx.getOutputs().size() == 1);
             Obligation input = tx.inputsOfType(Obligation.class).get(0);
             Obligation output = tx.outputsOfType(Obligation.class).get(0);
-            req.using("Only the lender property may change.", input.withoutLender() == output.withoutLender());
-            req.using("The lender property must change in a transfer.", input.getLender() != output.getLender());
+            req.using("Only the lender property may change.", input.withoutLender().equals(output.withoutLender()));
+            req.using("The lender property must change in a transfer.", !input.getLender().equals(output.getLender()));
             req.using("The borrower, old lender and new lender only must sign an obligation transfer transaction",
-                    signers.equals(keysFromParticipants(output)));
+                    signers.equals(Sets.union(keysFromParticipants(input), keysFromParticipants(output))));
             return null;
         });
     }
@@ -99,7 +101,7 @@ public class ObligationContract implements Contract {
 
             // Check that the cash is being assigned to us.
             Obligation inputObligation = obligationInputs.get(0);
-            List<Cash.State> acceptableCash = cash.stream().filter(it -> it.getOwner() == inputObligation.getLender()).collect(Collectors.toList());
+            List<Cash.State> acceptableCash = cash.stream().filter(it -> it.getOwner().equals(inputObligation.getLender())).collect(Collectors.toList());
             req.using("There must be output cash paid to the recipient.", !acceptableCash.isEmpty());
 
             // Sum the cash being sent to us (we don't care about the issuer).
@@ -110,7 +112,7 @@ public class ObligationContract implements Contract {
             List<Obligation> obligationOutputs = tx.outputsOfType(Obligation.class);
 
             // Check to see if we need an output obligation or not.
-            if (amountOutstanding == sumAcceptableCash) {
+            if (amountOutstanding.equals(sumAcceptableCash)) {
                 // If the obligation has been fully settled then there should be no obligation output state.
                 req.using("There must be no output obligation as it has been fully settled.", obligationOutputs.isEmpty());
             } else {
@@ -119,13 +121,13 @@ public class ObligationContract implements Contract {
 
                 // Check only the paid property changes.
                 Obligation outputObligation = obligationOutputs.get(0);
-                req.using("The amount may not change when settling.", inputObligation.getAmount() == outputObligation.getAmount());
-                req.using("The borrower may not change when settling.", inputObligation.getBorrower() == outputObligation.getBorrower());
-                req.using("The lender may not change when settling.", inputObligation.getLender() == outputObligation.getLender());
-                req.using("The linearId may not change when settling.", inputObligation.getLinearId() == outputObligation.getLinearId());
+                req.using("The amount may not change when settling.", inputObligation.getAmount().equals(outputObligation.getAmount()));
+                req.using("The borrower may not change when settling.", inputObligation.getBorrower().equals(outputObligation.getBorrower()));
+                req.using("The lender may not change when settling.", inputObligation.getLender().equals(outputObligation.getLender()));
+                req.using("The linearId may not change when settling.", inputObligation.getLinearId().equals(outputObligation.getLinearId()));
 
                 // Check the paid property is updated correctly.
-                req.using("Paid property incorrectly updated.", outputObligation.getPaid() == inputObligation.getPaid().plus(sumAcceptableCash));
+                req.using("Paid property incorrectly updated.", outputObligation.getPaid().equals(inputObligation.getPaid().plus(sumAcceptableCash)));
             }
 
             // Checks the required parties have signed.

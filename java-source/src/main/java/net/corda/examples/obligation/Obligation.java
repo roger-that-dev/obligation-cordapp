@@ -11,6 +11,7 @@ import net.corda.core.identity.Party;
 import java.security.PublicKey;
 import java.util.Currency;
 import java.util.List;
+import java.util.Objects;
 
 import static net.corda.core.utilities.EncodingUtils.toBase58String;
 
@@ -109,5 +110,23 @@ public class Obligation implements LinearState {
 
         return String.format("Obligation(%s): %s owes %s %s and has paid %s so far.",
                 this.linearId, borrowerString, lenderString, this.amount, this.paid);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Obligation)) {
+            return false;
+        }
+        Obligation other = (Obligation) obj;
+        return amount.equals(other.getAmount())
+                && lender.equals(other.getLender())
+                && borrower.equals(other.getBorrower())
+                && paid.equals(other.getPaid())
+                && linearId.equals(other.getLinearId());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(amount, lender, borrower, paid, linearId);
     }
 }

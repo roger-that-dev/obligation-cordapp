@@ -34,7 +34,6 @@ public class SettleObligation {
         private final UniqueIdentifier linearId;
         private final Amount<Currency> amount;
         private final Boolean anonymous;
-        private final Party ourIdentity = getOurIdentity();
 
 
         private final Step PREPARATION = new Step("Obtaining IOU from vault.");
@@ -95,13 +94,13 @@ public class SettleObligation {
             Party lenderIdentity = resolveIdentity(inputObligation.getLender());
 
             // Stage 3. This flow can only be initiated by the current recipient.
-            if (ourIdentity != borrowerIdentity) {
+            if (getOurIdentity() != borrowerIdentity) {
                 throw new FlowException("Settle Obligation flow must be initiated by the borrower.");
             }
 
             // Stage 4. Check we have enough cash to settle the requested amount.
             Amount<Currency> cashBalance = getCashBalance(getServiceHub(), amount.getToken());
-            if (cashBalance.getQuantity() > 0L) {
+            if (cashBalance.getQuantity() <= 0L) {
                 throw new FlowException(String.format("Borrower has no %s to settle.", amount.getToken()));
             }
 
@@ -147,8 +146,10 @@ public class SettleObligation {
             // Stage 9. Verify and sign the transaction.
             progressTracker.setCurrentStep(SIGNING);
             builder.verify(getServiceHub());
-            List<PublicKey> signingKeys = ImmutableList.copyOf(cashSigningKeys);
-            signingKeys.add(inputObligation.getBorrower().getOwningKey());
+            List<PublicKey> signingKeys = new ImmutableList.Builder<PublicKey>()
+                    .addAll(cashSigningKeys)
+                    .add(inputObligation.getBorrower().getOwningKey())
+                    .build();
             SignedTransaction ptx = getServiceHub().signInitialTransaction(builder, signingKeys);
 
             // Stage 10. Get counterparty signature.
@@ -178,6 +179,8 @@ public class SettleObligation {
         @Suspendable
         @Override
         public SignedTransaction call() throws FlowException {
+            subFlow(new IdentitySyncFlow.Receive(otherFlow));
+
             class SignTxFlow extends SignTransactionFlow {
                 private SignTxFlow(FlowSession otherFlow, ProgressTracker progressTracker) {
                     super(otherFlow, progressTracker);

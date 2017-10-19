@@ -9,7 +9,7 @@ import net.corda.testing.node.MockNetwork
 class SettleObligationTests : ObligationTests() {
 
     // Helper for
-    private fun getCashoutputByOwner(
+    private fun getCashOutputByOwner(
             cashStates: List<net.corda.finance.contracts.asset.Cash.State>,
             node: net.corda.node.internal.StartedNode<MockNetwork.MockNode>
     ): net.corda.finance.contracts.asset.Cash.State {
@@ -136,7 +136,7 @@ class SettleObligationTests : ObligationTests() {
         assert(outputCash.size == 2)       // Cash to b and change to a.
 
         // Change addresses are always anonymous, I think.
-        val change = getCashoutputByOwner(outputCash, a)
+        val change = getCashOutputByOwner(outputCash, a)
         assert(change.amount.withoutIssuer() == 1000.POUNDS)
 
         val payment = outputCash.filter { it.owner == b.info.chooseIdentity() }.single()
@@ -173,10 +173,10 @@ class SettleObligationTests : ObligationTests() {
         val outputCash = settleTransaction.tx.outputsOfType<net.corda.finance.contracts.asset.Cash.State>()
         assert(outputCash.size == 2)       // Cash to b and change to a.
 
-        val change = getCashoutputByOwner(outputCash, a)
+        val change = getCashOutputByOwner(outputCash, a)
         assert(change.amount.withoutIssuer() == 1000.POUNDS)
 
-        val payment = getCashoutputByOwner(outputCash, b)
+        val payment = getCashOutputByOwner(outputCash, b)
         assert(payment.amount.withoutIssuer() == 500.POUNDS)
     }
 
@@ -210,11 +210,10 @@ class SettleObligationTests : ObligationTests() {
         val outputCash = settleTransaction.tx.outputsOfType<net.corda.finance.contracts.asset.Cash.State>()
         assert(outputCash.size == 2)       // Cash to b and change to a.
 
-        val change = getCashoutputByOwner(outputCash, a)
+        val change = getCashOutputByOwner(outputCash, a)
         assert(change.amount.withoutIssuer() == 1000.POUNDS)
 
-        val payment = getCashoutputByOwner(outputCash, b)
+        val payment = getCashOutputByOwner(outputCash, b)
         assert(payment.amount.withoutIssuer() == 500.POUNDS)
     }
-
 }

@@ -36,12 +36,16 @@ public class TransferObligation {
         private final UniqueIdentifier linearId;
         private final Party newLender;
         private final Boolean anonymous;
-        private final Party ourIdentity = getOurIdentity();
 
         private final Step PREPARATION = new Step("Obtaining IOU from vault.");
         private final Step BUILDING = new Step("Building and verifying transaction.");
         private final Step SIGNING = new Step("Signing transaction.");
-        private final Step SYNCING = new Step("Syncing identities.");
+        private final Step SYNCING = new Step("Syncing identities.") {
+            @Override
+            public ProgressTracker childProgressTracker() {
+                return IdentitySyncFlow.Send.Companion.tracker();
+            }
+        };
         private final Step COLLECTING = new Step("Collecting counterparty signature.") {
             @Override
             public ProgressTracker childProgressTracker() {
@@ -96,7 +100,7 @@ public class TransferObligation {
             }
 
             // Stage 3. Abort if the borrower started this flow.
-            if (ourIdentity != lenderIdentity) {
+            if (!getOurIdentity().equals(lenderIdentity)) {
                 throw new IllegalStateException("Obligation transfer can only be initiated by the lender.");
             }
 
@@ -116,8 +120,10 @@ public class TransferObligation {
             }
 
             // Stage 4. Create the transfer command.
-            List<AbstractParty> signers = ImmutableList.copyOf(inputObligation.getParticipants());
-            signers.add(transferredObligation.getLender());
+            List<AbstractParty> signers = new ImmutableList.Builder<AbstractParty>()
+                    .addAll(inputObligation.getParticipants())
+                    .add(transferredObligation.getLender()).build();
+
             List<PublicKey> signerKeys = signers.stream().map(AbstractParty::getOwningKey).collect(Collectors.toList());
             Command transferCommand = new Command<>(new ObligationContract.Commands.Transfer(), signerKeys);
 
@@ -163,7 +169,7 @@ public class TransferObligation {
 
             // Stage 11. Notarise and record, the transaction in our vaults. Send a copy to me as well.
             progressTracker.setCurrentStep(FINALISING);
-            return subFlow(new FinalityFlow(stx, ImmutableSet.of(ourIdentity)));
+            return subFlow(new FinalityFlow(stx, ImmutableSet.of(getOurIdentity())));
         }
     }
 
@@ -178,6 +184,7 @@ public class TransferObligation {
         @Suspendable
         @Override
         public SignedTransaction call() throws FlowException {
+            subFlow(new IdentitySyncFlow.Receive(otherFlow));
             class SignTxFlow extends SignTransactionFlow {
                 private SignTxFlow(FlowSession otherFlow, ProgressTracker progressTracker) {
                     super(otherFlow, progressTracker);
