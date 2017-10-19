@@ -9,6 +9,9 @@ import net.corda.core.messaging.CordaRPCOps;
 import net.corda.core.messaging.FlowHandle;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.utilities.OpaqueBytes;
+import net.corda.examples.obligation.flows.IssueObligation;
+import net.corda.examples.obligation.flows.SettleObligation;
+import net.corda.examples.obligation.flows.TransferObligation;
 import net.corda.finance.contracts.asset.Cash;
 import net.corda.finance.flows.AbstractCashFlow;
 import net.corda.finance.flows.CashIssueFlow;
@@ -30,7 +33,7 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 import static net.corda.finance.contracts.GetBalances.getCashBalances;
 
 @Path("obligation")
-class ObligationApi {
+public class ObligationApi {
     private final CordaRPCOps rpcOps;
     private final Party myIdentity;
 
@@ -98,13 +101,13 @@ class ObligationApi {
             @QueryParam(value = "currency") String currency) {
 
         // 1. Prepare issue request.
-        final Amount issueAmount = new Amount<>((long) amount * 100, Currency.getInstance(currency));
+        final Amount<Currency> issueAmount = new Amount<>((long) amount * 100, Currency.getInstance(currency));
         final List<Party> notaries = rpcOps.notaryIdentities();
         if (notaries.isEmpty()) {
             throw new IllegalStateException("Could not find a notary.");
         }
         final Party notary = notaries.get(0);
-        final OpaqueBytes issueRef = OpaqueBytes.of("".getBytes());
+        final OpaqueBytes issueRef = OpaqueBytes.of(new byte[1]);
         final CashIssueFlow.IssueRequest issueRequest = new CashIssueFlow.IssueRequest(issueAmount, issueRef, notary);
 
         // 2. Start flow and wait for response.
@@ -128,8 +131,8 @@ class ObligationApi {
         // 1. Get party objects for the counterparty.
         final Set<Party> lenderIdentities = rpcOps.partiesFromName(party, false);
         if (lenderIdentities.size() != 1) {
-            throw new IllegalStateException(
-                    String.format("Found %d identities for the lender.", lenderIdentities.size()));
+            final String errMsg = String.format("Found %d identities for the lender.", lenderIdentities.size());
+            throw new IllegalStateException(errMsg);
         }
         final Party lenderIdentity = lenderIdentities.iterator().next();
 
@@ -161,8 +164,8 @@ class ObligationApi {
 
         final Set<Party> newLenders = rpcOps.partiesFromName(party, false);
         if (newLenders.size() != 1) {
-            throw new IllegalStateException(
-                    String.format("Found %d identities for the new lender.", newLenders.size()));
+            final String errMsg = String.format("Found %d identities for the new lender.", newLenders.size());
+            throw new IllegalStateException(errMsg);
         }
         final Party newLender = newLenders.iterator().next();
 
