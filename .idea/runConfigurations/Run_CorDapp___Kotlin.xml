@@ -10,6 +10,8 @@
     <option name="PASS_PARENT_ENVS" value="true" />
     <module name="iou-cordapp-v2_main" />
     <envs />
-    <method />
+    <method>
+      <option name="Make" enabled="false" />
+    </method>
   </configuration>
 </component>
