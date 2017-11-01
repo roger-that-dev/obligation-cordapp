@@ -2,26 +2,27 @@
 
 # The Obligation CorDapp
 
-This is an example of how to develop a CorDapp. It implements a simple obligation state that represents a debt from one 
-party to another. 
+This CorDapp comprises a demo of an IOU-like agreement that can be issued, transfered and settled confidentially. The CorDapp includes:
+
+* An obligation state definition that records an amount of any currency payable from one party to another. The obligation state
+* A contract that facilitates the verification of issuance, transfer (from one lender to another) and settlement of obligations
+* Three sets of flows for issuing, transferring and settling obligations. They work with both confidential and non-confidential obligations
 
 The CorDapp allows you to issue, transfer (from old lender to new lender) and settle (with cash) obligations. It also 
 comes with an API and website that allows you to do all of the aforementioned things.
 
-Obligations are issued, transferred and settled using the confidential identities features of Corda.
+# Instructions for setting up
 
-## Build
+1. `git clone http://github.com/roger3cev/obligation-cordapp`
+2. `cd obligation-cordapp`
+3. `./gradlew build`
+4. `cd build/nodes`
+5. `./runnodes`
 
-```
-./gradlew build
-```
+At this point you will have notary/network map node running as well as three other nodes and their corresponding webservers. There should be 7 console windows in total. One for the networkmap/notary and two for each of the three nodes.
 
-The output will be in `build/libs`.
+# Using the CorDapp
 
-## Dependencies
 
-The Obligation CorDapp depends on the 
-[Finance CorDapp](https://dl.bintray.com/r3/corda/net/corda/corda-finance/1.0.0/corda-finance-1.0.0.jar). Put both in 
-the plugins directory on your Corda node.
 
 Feel free to submit a PR.
