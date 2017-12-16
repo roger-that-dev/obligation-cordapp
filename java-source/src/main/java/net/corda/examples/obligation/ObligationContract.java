@@ -36,7 +36,7 @@ public class ObligationContract implements Contract {
 
     @Override
     public void verify(LedgerTransaction tx) {
-        final CommandWithParties<Commands> command = requireSingleCommand(tx.getCommands(), Commands.class);
+        final CommandWithParties<Commands> command = requireSingleCommand(tx.getCommands(), ObligationContract.Commands.class);
         final Commands commandData = command.getValue();
         final Set<PublicKey> setOfSigners = new HashSet<>(command.getSigners());
         if (commandData instanceof Commands.Issue) {
@@ -72,7 +72,6 @@ public class ObligationContract implements Contract {
         });
     }
 
-
     // This only allows one obligation transfer per transaction.
     private void verifyTransfer(LedgerTransaction tx, Set<PublicKey> signers) {
         requireThat(req -> {
@@ -107,7 +106,7 @@ public class ObligationContract implements Contract {
             // Sum the cash being sent to us (we don't care about the issuer).
             Amount<Currency> sumAcceptableCash = withoutIssuer(sumCash(acceptableCash));
             Amount<Currency> amountOutstanding = inputObligation.getAmount().minus(inputObligation.getPaid());
-            req.using("The amount settled cannot be more than the amount outstanding.", amountOutstanding.getQuantity() >= sumAcceptableCash.getQuantity());
+            req.using("The amount settled cannot be more than the amount outstanding.", (amountOutstanding.compareTo(sumAcceptableCash)) >= 0);
 
             List<Obligation> obligationOutputs = tx.outputsOfType(Obligation.class);
 
