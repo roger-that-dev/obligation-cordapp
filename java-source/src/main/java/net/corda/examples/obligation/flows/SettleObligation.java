@@ -77,7 +77,7 @@ public class SettleObligation {
             final Party lenderIdentity = resolveIdentity(inputObligation.getLender());
 
             // Stage 3. This flow can only be initiated by the current recipient.
-            if (getOurIdentity() != borrowerIdentity) {
+            if (!borrowerIdentity.equals(getOurIdentity())) {
                 throw new FlowException("Settle Obligation flow must be initiated by the borrower.");
             }
 
