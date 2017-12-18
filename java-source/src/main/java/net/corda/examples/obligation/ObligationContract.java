@@ -1,6 +1,5 @@
 package net.corda.examples.obligation;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import net.corda.core.contracts.*;
 import net.corda.core.identity.AbstractParty;
@@ -36,7 +35,7 @@ public class ObligationContract implements Contract {
 
     @Override
     public void verify(LedgerTransaction tx) {
-        final CommandWithParties<Commands> command = requireSingleCommand(tx.getCommands(), ObligationContract.Commands.class);
+        final CommandWithParties<Commands> command = requireSingleCommand(tx.getCommands(), Commands.class);
         final Commands commandData = command.getValue();
         final Set<PublicKey> setOfSigners = new HashSet<>(command.getSigners());
         if (commandData instanceof Commands.Issue) {
@@ -106,7 +105,7 @@ public class ObligationContract implements Contract {
             // Sum the cash being sent to us (we don't care about the issuer).
             Amount<Currency> sumAcceptableCash = withoutIssuer(sumCash(acceptableCash));
             Amount<Currency> amountOutstanding = inputObligation.getAmount().minus(inputObligation.getPaid());
-            req.using("The amount settled cannot be more than the amount outstanding.", (amountOutstanding.compareTo(sumAcceptableCash)) >= 0);
+            req.using("The amount settled cannot be more than the amount outstanding.", amountOutstanding.compareTo(sumAcceptableCash) >= 0);
 
             List<Obligation> obligationOutputs = tx.outputsOfType(Obligation.class);
 
