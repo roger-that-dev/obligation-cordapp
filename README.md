@@ -28,8 +28,8 @@ NOTE: That the obligation and corda-finance CorDapps will automatically be insta
 In your favourite web browers, navigate to:
 
 1. PartyA: `http://localhost:10007`
-2. PartyB: `http://localhost:10007`
-3. PartyC: `http://localhost:10007`
+2. PartyB: `http://localhost:10010`
+3. PartyC: `http://localhost:10013`
 
 You'll see a basic page, listing all the API end-points and static web content. Click on the "obligation" link under "static web content". The dashboard shows you a number of things:
 
