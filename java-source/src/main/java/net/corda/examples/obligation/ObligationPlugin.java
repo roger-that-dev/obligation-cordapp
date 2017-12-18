@@ -14,7 +14,7 @@ public class ObligationPlugin implements WebServerPluginRegistry {
     private final List<Function<CordaRPCOps, ?>> webApis = ImmutableList.of(ObligationApi::new);
 
     private final Map<String, String> staticServeDirs = ImmutableMap.of(
-            "example", getClass().getClassLoader().getResource("obligationWeb").toExternalForm()
+            "obligation", getClass().getClassLoader().getResource("obligationWeb").toExternalForm()
     );
 
     @Override
