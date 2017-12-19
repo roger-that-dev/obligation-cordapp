@@ -16,7 +16,7 @@ class ObligationContractTransferTests : ObligationContractUnitTests() {
             transaction {
                 output(OBLIGATION_CONTRACT_ID) { oneDollarObligation }
                 command(ALICE_PUBKEY, BOB_PUBKEY) { DummyCommand() }
-                this `fails with` "Required ObligationContract.Commands command"
+                this `fails with` "List is empty."
             }
             transaction {
                 output(OBLIGATION_CONTRACT_ID) { oneDollarObligation }
