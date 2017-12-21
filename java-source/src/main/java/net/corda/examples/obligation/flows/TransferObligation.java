@@ -25,7 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
-import static net.corda.finance.contracts.asset.ObligationKt.OBLIGATION_PROGRAM_ID;
+import static net.corda.examples.obligation.ObligationContract.OBLIGATION_CONTRACT_ID;
 
 public class TransferObligation {
 
@@ -102,7 +102,7 @@ public class TransferObligation {
             // Stage 5. Create a transaction builder, then add the states and commands.
             final TransactionBuilder builder = new TransactionBuilder(getFirstNotary())
                     .addInputState(obligationToTransfer)
-                    .addOutputState(transferredObligation, OBLIGATION_PROGRAM_ID)
+                    .addOutputState(transferredObligation, OBLIGATION_CONTRACT_ID)
                     .addCommand(transferCommand);
 
             // Stage 6. Verify and sign the transaction.

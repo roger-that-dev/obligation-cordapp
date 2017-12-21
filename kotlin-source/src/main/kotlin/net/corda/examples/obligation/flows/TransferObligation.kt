@@ -14,7 +14,7 @@ import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import net.corda.examples.obligation.Obligation
 import net.corda.examples.obligation.ObligationContract
-import net.corda.finance.contracts.asset.OBLIGATION_PROGRAM_ID
+import net.corda.examples.obligation.ObligationContract.Companion.OBLIGATION_CONTRACT_ID
 
 object TransferObligation {
 
@@ -68,7 +68,7 @@ object TransferObligation {
             // Stage 5. Create a transaction builder, then add the states and commands.
             val builder = TransactionBuilder(firstNotary)
                     .addInputState(obligationToTransfer)
-                    .addOutputState(transferredObligation, OBLIGATION_PROGRAM_ID)
+                    .addOutputState(transferredObligation, OBLIGATION_CONTRACT_ID)
                     .addCommand(transferCommand)
 
             // Stage 6. Verify and sign the transaction.
