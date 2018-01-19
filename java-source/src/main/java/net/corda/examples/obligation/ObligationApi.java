@@ -53,6 +53,7 @@ public class ObligationApi {
     @Path("peers")
     @Produces(MediaType.APPLICATION_JSON)
     public Map<String, List<String>> peers() {
+        // TODO: Not filtering me out properly.
         return ImmutableMap.of("peers", rpcOps.networkMapSnapshot()
                 .stream()
                 .filter(nodeInfo -> nodeInfo.getLegalIdentities().get(0) != myIdentity)

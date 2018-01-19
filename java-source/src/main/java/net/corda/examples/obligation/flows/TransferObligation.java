@@ -22,6 +22,7 @@ import net.corda.examples.obligation.flows.ObligationBaseFlow.SignTxFlowNoChecki
 
 import java.security.PublicKey;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -115,7 +116,12 @@ public class TransferObligation {
             final Party borrower = getBorrowerIdentity(inputObligation);
 
             // Stage 8. Send any keys and certificates so the signers can verify each other's identity.
-            final Set<FlowSession> sessions = ImmutableSet.of(initiateFlow(borrower), initiateFlow(newLender));
+            // We call `toSet` in case the borrower and the new lender are the same party.
+            Set<FlowSession> sessions = new HashSet<>();
+            Set<Party> parties = ImmutableSet.of(borrower, newLender);
+            for (Party party : parties) {
+                sessions.add(initiateFlow(party));
+            }
             subFlow(new IdentitySyncFlow.Send(sessions, ptx.getTx(), SYNCING.childProgressTracker()));
 
             // Stage 9. Collect signatures from the borrower and the new lender.
