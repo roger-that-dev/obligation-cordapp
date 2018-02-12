@@ -2,7 +2,7 @@ package net.corda.examples.obligation.flows
 
 import net.corda.examples.obligation.Obligation
 import net.corda.finance.POUNDS
-import net.corda.testing.chooseIdentity
+import net.corda.testing.core.chooseIdentity
 import org.jgroups.util.Util.assertEquals
 
 class TransferObligationTests : ObligationTests() {

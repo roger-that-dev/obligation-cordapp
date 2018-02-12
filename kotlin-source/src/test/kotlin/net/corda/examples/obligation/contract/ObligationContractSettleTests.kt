@@ -10,7 +10,7 @@ import net.corda.finance.DOLLARS
 import net.corda.finance.POUNDS
 import net.corda.finance.`issued by`
 import net.corda.finance.contracts.asset.Cash
-import net.corda.testing.*
+import net.corda.testing.node.ledger
 import org.junit.Test
 import java.util.*
 
@@ -25,33 +25,33 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
 
     @Test
     fun mustIncludeSettleCommand() {
-        val inputCash = createCashState(5.DOLLARS, BOB)
-        val outputCash = inputCash.withNewOwner(newOwner = ALICE).ownableState
-        ledger {
+        val inputCash = createCashState(5.DOLLARS, bob.party)
+        val outputCash = inputCash.withNewOwner(newOwner = alice.party).ownableState
+        ledgerServices.ledger {
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                input(OBLIGATION_CONTRACT_ID) { inputCash }
-                output(OBLIGATION_CONTRACT_ID) { outputCash }
-                command(BOB_PUBKEY) { Cash.Commands.Move() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                input(OBLIGATION_CONTRACT_ID, inputCash)
+                output(OBLIGATION_CONTRACT_ID, outputCash)
+                command(bob.publicKey, Cash.Commands.Move())
                 this.fails()
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                input(OBLIGATION_CONTRACT_ID) { inputCash }
-                output(OBLIGATION_CONTRACT_ID) { outputCash }
-                command(BOB_PUBKEY) { Cash.Commands.Move() }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { DummyCommand() } // Wrong type.
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                input(OBLIGATION_CONTRACT_ID, inputCash)
+                output(OBLIGATION_CONTRACT_ID, outputCash)
+                command(bob.publicKey, Cash.Commands.Move())
+                command(listOf(alice.publicKey, bob.publicKey), DummyCommand()) // Wrong type.
                 this.fails()
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                input(OBLIGATION_CONTRACT_ID) { inputCash }
-                output(OBLIGATION_CONTRACT_ID) { outputCash }
-                command(BOB_PUBKEY) { Cash.Commands.Move() }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() } // Correct Type.
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                input(OBLIGATION_CONTRACT_ID, inputCash)
+                output(OBLIGATION_CONTRACT_ID, outputCash)
+                command(bob.publicKey, Cash.Commands.Move())
+                command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle()) // Correct Type.
                 this.verifies()
             }
         }
@@ -59,31 +59,31 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
 
     @Test
     fun `must have only one input obligation`() {
-        val duplicateObligation = Obligation(10.DOLLARS, ALICE, BOB)
-        val tenDollars = createCashState(10.DOLLARS, BOB)
-        val fiveDollars = createCashState(5.DOLLARS, BOB)
-        ledger {
+        val duplicateObligation = Obligation(10.DOLLARS, alice.party, bob.party)
+        val tenDollars = createCashState(10.DOLLARS, bob.party)
+        val fiveDollars = createCashState(5.DOLLARS, bob.party)
+        ledgerServices.ledger {
             transaction {
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
+                command(alice.publicKey, bob.publicKey) { ObligationContract.Commands.Settle() }
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation)
                 this `fails with` "There must be one input obligation."
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { duplicateObligation }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                input(OBLIGATION_CONTRACT_ID) { fiveDollars }
-                output(OBLIGATION_CONTRACT_ID) { fiveDollars.withNewOwner(newOwner = ALICE).ownableState }
-                command(BOB_PUBKEY) { Cash.Commands.Move() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, duplicateObligation)
+                command(alice.publicKey, bob.publicKey) { ObligationContract.Commands.Settle() }
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                input(OBLIGATION_CONTRACT_ID, fiveDollars)
+                output(OBLIGATION_CONTRACT_ID, fiveDollars.withNewOwner(newOwner = alice.party).ownableState)
+                command(bob.publicKey) { Cash.Commands.Move() }
                 this `fails with` "There must be one input obligation."
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
-                input(OBLIGATION_CONTRACT_ID) { tenDollars }
-                output(OBLIGATION_CONTRACT_ID) { tenDollars.withNewOwner(newOwner = ALICE).ownableState }
-                command(BOB_PUBKEY) { Cash.Commands.Move() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                command(alice.publicKey, bob.publicKey) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollars)
+                output(OBLIGATION_CONTRACT_ID, tenDollars.withNewOwner(newOwner = alice.party).ownableState)
+                command(bob.publicKey) { Cash.Commands.Move() }
                 this.verifies()
             }
         }
@@ -91,22 +91,22 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
 
     @Test
     fun `must be cash output states present`() {
-        val cash = createCashState(5.DOLLARS, BOB)
-        val cashPayment = cash.withNewOwner(newOwner = ALICE)
-        ledger {
+        val cash = createCashState(5.DOLLARS, bob.party)
+        val cashPayment = cash.withNewOwner(newOwner = alice.party)
+        ledgerServices.ledger {
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                command(alice.publicKey, bob.publicKey) { ObligationContract.Commands.Settle() }
                 this `fails with` "There must be output cash."
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { cash }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                output(OBLIGATION_CONTRACT_ID) { cashPayment.ownableState }
-                command(BOB_PUBKEY) { cashPayment.command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, cash)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                output(OBLIGATION_CONTRACT_ID, cashPayment.ownableState)
+                command(bob.publicKey, cashPayment.command)
+                command(alice.publicKey, bob.publicKey) { ObligationContract.Commands.Settle() }
                 this.verifies()
             }
         }
@@ -114,26 +114,26 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
 
     @Test
     fun `must be cash output states with receipient as owner`() {
-        val cash = createCashState(5.DOLLARS, BOB)
+        val cash = createCashState(5.DOLLARS, bob.party)
         val invalidCashPayment = cash.withNewOwner(newOwner = CHARLIE)
-        val validCashPayment = cash.withNewOwner(newOwner = ALICE)
-        ledger {
+        val validCashPayment = cash.withNewOwner(newOwner = alice.party)
+        ledgerServices.ledger {
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { cash }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                output(OBLIGATION_CONTRACT_ID) { invalidCashPayment.ownableState }
-                command(BOB_PUBKEY) { invalidCashPayment.command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, cash)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                output(OBLIGATION_CONTRACT_ID, invalidCashPayment.ownableState)
+                command(bob.publicKey, invalidCashPayment.command)
+                command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle())
                 this `fails with` "There must be output cash paid to the recipient."
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { cash }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                output(OBLIGATION_CONTRACT_ID) { validCashPayment.ownableState }
-                command(BOB_PUBKEY) { validCashPayment.command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, cash)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                output(OBLIGATION_CONTRACT_ID, validCashPayment.ownableState)
+                command(bob.publicKey, validCashPayment.command)
+                command(alice.publicKey, bob.publicKey) { ObligationContract.Commands.Settle() }
                 this.verifies()
             }
         }
@@ -141,34 +141,34 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
 
     @Test
     fun `cash settlement amount must be less than the remaining amount`() {
-        val elevenDollars = createCashState(11.DOLLARS, BOB)
-        val tenDollars = createCashState(10.DOLLARS, BOB)
-        val fiveDollars = createCashState(5.DOLLARS, BOB)
-        ledger {
+        val elevenDollars = createCashState(11.DOLLARS, bob.party)
+        val tenDollars = createCashState(10.DOLLARS, bob.party)
+        val fiveDollars = createCashState(5.DOLLARS, bob.party)
+        ledgerServices.ledger {
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { elevenDollars }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(11.DOLLARS) }
-                output(OBLIGATION_CONTRACT_ID) { elevenDollars.withNewOwner(newOwner = ALICE).ownableState }
-                command(BOB_PUBKEY) { elevenDollars.withNewOwner(newOwner = ALICE).command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, elevenDollars)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(11.DOLLARS))
+                output(OBLIGATION_CONTRACT_ID, elevenDollars.withNewOwner(newOwner = alice.party).ownableState)
+                command(bob.publicKey, elevenDollars.withNewOwner(newOwner = alice.party).command)
+                command(alice.publicKey, bob.publicKey) { ObligationContract.Commands.Settle() }
                 this `fails with` "The amount settled cannot be more than the amount outstanding."
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { fiveDollars }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                output(OBLIGATION_CONTRACT_ID) { fiveDollars.withNewOwner(newOwner = ALICE).ownableState }
-                command(BOB_PUBKEY) { fiveDollars.withNewOwner(newOwner = ALICE).command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, fiveDollars)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                output(OBLIGATION_CONTRACT_ID, fiveDollars.withNewOwner(newOwner = alice.party).ownableState)
+                command(bob.publicKey, fiveDollars.withNewOwner(newOwner = alice.party).command)
+                command(alice.publicKey, bob.publicKey) { ObligationContract.Commands.Settle() }
                 this.verifies()
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { tenDollars }
-                output(OBLIGATION_CONTRACT_ID) { tenDollars.withNewOwner(newOwner = ALICE).ownableState }
-                command(BOB_PUBKEY) { tenDollars.withNewOwner(newOwner = ALICE).command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, tenDollars)
+                output(OBLIGATION_CONTRACT_ID, tenDollars.withNewOwner(newOwner = alice.party).ownableState)
+                command(bob.publicKey, tenDollars.withNewOwner(newOwner = alice.party).command)
+                command(alice.publicKey, bob.publicKey) { ObligationContract.Commands.Settle() }
                 this.verifies()
             }
         }
@@ -176,23 +176,23 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
 
     @Test
     fun `cash settlement must be in the correct currency`() {
-        val tenDollars = createCashState(10.DOLLARS, BOB)
-        val tenPounds = createCashState(10.POUNDS, BOB)
-        ledger {
+        val tenDollars = createCashState(10.DOLLARS, bob.party)
+        val tenPounds = createCashState(10.POUNDS, bob.party)
+        ledgerServices.ledger {
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { tenPounds }
-                output(OBLIGATION_CONTRACT_ID) { tenPounds.withNewOwner(newOwner = ALICE).ownableState }
-                command(BOB_PUBKEY) { tenPounds.withNewOwner(newOwner = ALICE).command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, tenPounds)
+                output(OBLIGATION_CONTRACT_ID, tenPounds.withNewOwner(newOwner = alice.party).ownableState)
+                command(bob.publicKey, tenPounds.withNewOwner(newOwner = alice.party).command)
+                command(alice.publicKey, bob.publicKey) { ObligationContract.Commands.Settle() }
                 this `fails with` "Token mismatch: GBP vs USD"
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { tenDollars }
-                output(OBLIGATION_CONTRACT_ID) { tenDollars.withNewOwner(newOwner = ALICE).ownableState }
-                command(BOB_PUBKEY) { tenDollars.withNewOwner(newOwner = ALICE).command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, tenDollars)
+                output(OBLIGATION_CONTRACT_ID, tenDollars.withNewOwner(newOwner = alice.party).ownableState)
+                command(bob.publicKey, tenDollars.withNewOwner(newOwner = alice.party).command)
+                command(alice.publicKey, bob.publicKey) { ObligationContract.Commands.Settle() }
                 this.verifies()
             }
         }
@@ -200,41 +200,41 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
 
     @Test
     fun `must have output obligation if not fully settling`() {
-        val tenDollars = createCashState(10.DOLLARS, BOB)
-        val fiveDollars = createCashState(5.DOLLARS, BOB)
-        ledger {
+        val tenDollars = createCashState(10.DOLLARS, bob.party)
+        val fiveDollars = createCashState(5.DOLLARS, bob.party)
+        ledgerServices.ledger {
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { fiveDollars }
-                output(OBLIGATION_CONTRACT_ID) { fiveDollars.withNewOwner(newOwner = ALICE).ownableState }
-                command(BOB_PUBKEY) { fiveDollars.withNewOwner(newOwner = BOB).command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, fiveDollars)
+                output(OBLIGATION_CONTRACT_ID, fiveDollars.withNewOwner(newOwner = alice.party).ownableState)
+                command(bob.publicKey, fiveDollars.withNewOwner(newOwner = bob.party).command)
+                command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle())
                 this `fails with` "There must be one output obligation."
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { fiveDollars }
-                output(OBLIGATION_CONTRACT_ID) { fiveDollars.withNewOwner(newOwner = ALICE).ownableState }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                command(BOB_PUBKEY) { fiveDollars.withNewOwner(newOwner = BOB).command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, fiveDollars)
+                output(OBLIGATION_CONTRACT_ID, fiveDollars.withNewOwner(newOwner = alice.party).ownableState)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                command(bob.publicKey, fiveDollars.withNewOwner(newOwner = bob.party).command)
+                command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle())
                 verifies()
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollars }
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(10.DOLLARS) }
-                output(OBLIGATION_CONTRACT_ID) { tenDollars.withNewOwner(newOwner = ALICE).ownableState }
-                command(BOB_PUBKEY) { tenDollars.withNewOwner(newOwner = BOB).command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollars)
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(10.DOLLARS))
+                output(OBLIGATION_CONTRACT_ID, tenDollars.withNewOwner(newOwner = alice.party).ownableState)
+                command(bob.publicKey, tenDollars.withNewOwner(newOwner = bob.party).command)
+                command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle())
                 this `fails with` "There must be no output obligation as it has been fully settled."
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollars }
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                output(OBLIGATION_CONTRACT_ID) { tenDollars.withNewOwner(newOwner = ALICE).ownableState }
-                command(BOB_PUBKEY) { tenDollars.withNewOwner(newOwner = BOB).command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollars)
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                output(OBLIGATION_CONTRACT_ID, tenDollars.withNewOwner(newOwner = alice.party).ownableState)
+                command(bob.publicKey, tenDollars.withNewOwner(newOwner = bob.party).command)
+                command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle())
                 verifies()
             }
         }
@@ -242,42 +242,42 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
 
     @Test
     fun `only paid property may change`() {
-        val fiveDollars = createCashState(5.DOLLARS, BOB)
-        ledger {
+        val fiveDollars = createCashState(5.DOLLARS, bob.party)
+        ledgerServices.ledger {
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { fiveDollars }
-                output(OBLIGATION_CONTRACT_ID) { fiveDollars.withNewOwner(newOwner = ALICE).ownableState }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.copy(borrower = ALICE, paid = 5.DOLLARS) }
-                command(BOB_PUBKEY) { fiveDollars.withNewOwner(newOwner = BOB).command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, fiveDollars)
+                output(OBLIGATION_CONTRACT_ID, fiveDollars.withNewOwner(newOwner = alice.party).ownableState)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.copy(borrower = alice.party, paid = 5.DOLLARS))
+                command(bob.publicKey, fiveDollars.withNewOwner(newOwner = bob.party).command)
+                command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle())
                 this `fails with` "The borrower may not change when settling."
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { fiveDollars }
-                output(OBLIGATION_CONTRACT_ID) { fiveDollars.withNewOwner(newOwner = ALICE).ownableState }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.copy(amount = 0.DOLLARS, paid = 5.DOLLARS) }
-                command(BOB_PUBKEY) { fiveDollars.withNewOwner(newOwner = BOB).command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, fiveDollars)
+                output(OBLIGATION_CONTRACT_ID, fiveDollars.withNewOwner(newOwner = alice.party).ownableState)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.copy(amount = 0.DOLLARS, paid = 5.DOLLARS))
+                command(bob.publicKey, fiveDollars.withNewOwner(newOwner = bob.party).command)
+                command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle())
                 this `fails with` "The amount may not change when settling."
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { fiveDollars }
-                output(OBLIGATION_CONTRACT_ID) { fiveDollars.withNewOwner(newOwner = ALICE).ownableState }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.copy(lender = CHARLIE, paid = 5.DOLLARS) }
-                command(BOB_PUBKEY) { fiveDollars.withNewOwner(newOwner = BOB).command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, fiveDollars)
+                output(OBLIGATION_CONTRACT_ID, fiveDollars.withNewOwner(newOwner = alice.party).ownableState)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.copy(lender = CHARLIE, paid = 5.DOLLARS))
+                command(bob.publicKey, fiveDollars.withNewOwner(newOwner = bob.party).command)
+                command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle())
                 this `fails with` "The lender may not change when settling."
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                input(OBLIGATION_CONTRACT_ID) { fiveDollars }
-                output(OBLIGATION_CONTRACT_ID) { fiveDollars.withNewOwner(newOwner = ALICE).ownableState }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                command(BOB_PUBKEY) { fiveDollars.withNewOwner(newOwner = BOB).command }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                input(OBLIGATION_CONTRACT_ID, fiveDollars)
+                output(OBLIGATION_CONTRACT_ID, fiveDollars.withNewOwner(newOwner = alice.party).ownableState)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                command(bob.publicKey) { fiveDollars.withNewOwner(newOwner = bob.party).command }
+                command(alice.publicKey, bob.publicKey) { ObligationContract.Commands.Settle() }
                 verifies()
             }
         }
@@ -285,34 +285,34 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
 
     @Test
     fun `must be signed by all participants`() {
-        val cash = createCashState(5.DOLLARS, BOB)
-        val cashPayment = cash.withNewOwner(newOwner = ALICE)
-        ledger {
+        val cash = createCashState(5.DOLLARS, bob.party)
+        val cashPayment = cash.withNewOwner(newOwner = alice.party)
+        ledgerServices.ledger {
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { cash }
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                output(OBLIGATION_CONTRACT_ID) { cashPayment.ownableState }
-                command(BOB_PUBKEY) { cashPayment.command }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                command(ALICE_PUBKEY, CHARLIE_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, cash)
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                output(OBLIGATION_CONTRACT_ID, cashPayment.ownableState)
+                command(bob.publicKey, cashPayment.command)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                command(listOf(alice.publicKey, CHARLIE_PUBKEY), ObligationContract.Commands.Settle())
                 failsWith("Both lender and borrower together only must sign obligation settle transaction.")
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { cash }
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                output(OBLIGATION_CONTRACT_ID) { cashPayment.ownableState }
-                command(BOB_PUBKEY) { cashPayment.command }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                command(BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, cash)
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                output(OBLIGATION_CONTRACT_ID, cashPayment.ownableState)
+                command(bob.publicKey, cashPayment.command)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                command(bob.publicKey, ObligationContract.Commands.Settle())
                 failsWith("Both lender and borrower together only must sign obligation settle transaction.")
             }
             transaction {
-                input(OBLIGATION_CONTRACT_ID) { cash }
-                input(OBLIGATION_CONTRACT_ID) { tenDollarObligation }
-                output(OBLIGATION_CONTRACT_ID) { cashPayment.ownableState }
-                command(BOB_PUBKEY) { cashPayment.command }
-                output(OBLIGATION_CONTRACT_ID) { tenDollarObligation.pay(5.DOLLARS) }
-                command(ALICE_PUBKEY, BOB_PUBKEY) { ObligationContract.Commands.Settle() }
+                input(OBLIGATION_CONTRACT_ID, cash)
+                input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
+                output(OBLIGATION_CONTRACT_ID, cashPayment.ownableState)
+                command(bob.publicKey, cashPayment.command)
+                output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
+                command(alice.publicKey, bob.publicKey) { ObligationContract.Commands.Settle() }
                 verifies()
             }
         }

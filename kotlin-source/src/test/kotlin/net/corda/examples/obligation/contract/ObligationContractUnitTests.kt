@@ -3,29 +3,26 @@ package net.corda.examples.obligation.contract
 import net.corda.core.contracts.CommandData
 import net.corda.core.contracts.ContractState
 import net.corda.core.identity.AbstractParty
+import net.corda.core.identity.CordaX500Name
 import net.corda.examples.obligation.Obligation
 import net.corda.finance.DOLLARS
 import net.corda.finance.POUNDS
-import net.corda.testing.ALICE
-import net.corda.testing.BOB
-import net.corda.testing.setCordappPackages
-import net.corda.testing.unsetCordappPackages
-import org.junit.After
-import org.junit.Before
+import net.corda.testing.contracts.DummyContract
+import net.corda.testing.core.TestIdentity
+import net.corda.testing.node.MockServices
+import net.corda.testing.node.makeTestIdentityService
 
 /**
  * A base class to reduce the boilerplate when writing obligation contract tests.
  */
 abstract class ObligationContractUnitTests {
-    @Before
-    fun setup() {
-        setCordappPackages("net.corda.examples.obligation", "net.corda.testing.contracts")
-    }
-
-    @After
-    fun tearDown() {
-        unsetCordappPackages()
-    }
+    protected val ledgerServices = MockServices(
+            listOf("net.corda.examples.obligation", "net.corda.testing.contracts"),
+            identityService = makeTestIdentityService(),
+            initialIdentity = TestIdentity(CordaX500Name("TestIdentity", "", "GB")))
+    protected val alice = TestIdentity(CordaX500Name("Alice", "", "GB"))
+    protected val bob = TestIdentity(CordaX500Name("Bob", "", "GB"))
+    protected val charlie = TestIdentity(CordaX500Name("Bob", "", "GB"))
 
     protected class DummyState : ContractState {
         override val participants: List<AbstractParty> get() = listOf()
@@ -33,6 +30,6 @@ abstract class ObligationContractUnitTests {
 
     protected class DummyCommand : CommandData
 
-    protected val oneDollarObligation = Obligation(1.POUNDS, ALICE, BOB)
-    protected val tenDollarObligation = Obligation(10.DOLLARS, ALICE, BOB)
+    protected val oneDollarObligation = Obligation(1.POUNDS, alice.party, bob.party)
+    protected val tenDollarObligation = Obligation(10.DOLLARS, alice.party, bob.party)
 }

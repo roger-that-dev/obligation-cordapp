@@ -5,16 +5,15 @@ import net.corda.core.flows.FlowException
 import net.corda.examples.obligation.Obligation
 import net.corda.finance.POUNDS
 import net.corda.finance.contracts.asset.Cash
-import net.corda.node.internal.StartedNode
-import net.corda.testing.chooseIdentity
-import net.corda.testing.node.MockNetwork.MockNode
+import net.corda.testing.core.chooseIdentity
+import net.corda.testing.node.StartedMockNode
 
 class SettleObligationTests : ObligationTests() {
 
     // Helper for extracting the cash output owned by a the node.
     private fun getCashOutputByOwner(
             cashStates: List<Cash.State>,
-            node: StartedNode<MockNode>): Cash.State {
+            node: StartedMockNode): Cash.State {
         return cashStates.single { cashState ->
             val cashOwner = node.services.identityService.requireWellKnownPartyFromAnonymous(cashState.owner)
             cashOwner == node.info.chooseIdentity()
