@@ -1,5 +1,6 @@
 package net.corda.examples.obligation.flows
 
+import junit.framework.Assert.assertEquals
 import net.corda.core.contracts.withoutIssuer
 import net.corda.core.flows.FlowException
 import net.corda.examples.obligation.Obligation
@@ -82,7 +83,7 @@ class SettleObligationTests : ObligationTests() {
         // Check both parties have the transaction.
         val aTx = a.services.validatedTransactions.getTransaction(settleTransaction.id)
         val bTx = b.services.validatedTransactions.getTransaction(settleTransaction.id)
-        kotlin.test.assertEquals(aTx, bTx)
+        assertEquals(aTx, bTx)
     }
 
     @org.junit.Test
@@ -91,7 +92,7 @@ class SettleObligationTests : ObligationTests() {
         selfIssueCash(a, 1500.POUNDS)
 
         // Issue obligation.
-        val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = true)
+        val issuanceTransaction = issueObligation(a, b, 1000.POUNDS)
         network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as Obligation
 
@@ -103,7 +104,7 @@ class SettleObligationTests : ObligationTests() {
         // Check both parties have the transaction.
         val aTx = a.services.validatedTransactions.getTransaction(settleTransaction.id)
         val bTx = b.services.validatedTransactions.getTransaction(settleTransaction.id)
-        kotlin.test.assertEquals(aTx, bTx)
+        assertEquals(aTx, bTx)
     }
 
     @org.junit.Test
@@ -121,27 +122,27 @@ class SettleObligationTests : ObligationTests() {
         val amountToSettle = 500.POUNDS
         val settleTransaction = settleObligation(issuedObligation.linearId, a, amountToSettle, anonymous = false)
         network.waitQuiescent()
-        assert(settleTransaction.tx.outputsOfType<Obligation>().size == 1)
+        assertEquals(1, settleTransaction.tx.outputsOfType<Obligation>().size)
 
         // Check both parties have the transaction.
         val aTx = a.services.validatedTransactions.getTransaction(settleTransaction.id)
         val bTx = b.services.validatedTransactions.getTransaction(settleTransaction.id)
-        kotlin.test.assertEquals(aTx, bTx)
+        assertEquals(aTx, bTx)
 
         // Check the obligation paid amount is correctly updated.
         val partiallySettledObligation = settleTransaction.tx.outputsOfType<Obligation>().single()
-        assert(partiallySettledObligation.paid == amountToSettle)
+        assertEquals(amountToSettle, partiallySettledObligation.paid)
 
         // Check cash has gone to the correct parties.
         val outputCash = settleTransaction.tx.outputsOfType<Cash.State>()
-        assert(outputCash.size == 2)       // Cash to b and change to a.
+        assertEquals(2, outputCash.size)       // Cash to b and change to a.
 
         // Change addresses are always anonymous, I think.
         val change = getCashOutputByOwner(outputCash, a)
-        assert(change.amount.withoutIssuer() == 1000.POUNDS)
+        assertEquals(1000.POUNDS, change.amount.withoutIssuer())
 
         val payment = outputCash.filter { it.owner == b.info.chooseIdentity() }.single()
-        assert(payment.amount.withoutIssuer() == 500.POUNDS)
+        assertEquals(500.POUNDS, payment.amount.withoutIssuer())
     }
 
     @org.junit.Test
@@ -157,28 +158,28 @@ class SettleObligationTests : ObligationTests() {
 
         // Attempt settlement.
         val amountToSettle = 500.POUNDS
-        val settleTransaction = settleObligation(issuedObligation.linearId, a, amountToSettle, anonymous = true)
+        val settleTransaction = settleObligation(issuedObligation.linearId, a, amountToSettle)
         network.waitQuiescent()
         assert(settleTransaction.tx.outputsOfType<Obligation>().size == 1)
 
         // Check both parties have the transaction.
         val aTx = a.services.validatedTransactions.getTransaction(settleTransaction.id)
         val bTx = b.services.validatedTransactions.getTransaction(settleTransaction.id)
-        kotlin.test.assertEquals(aTx, bTx)
+        assertEquals(aTx, bTx)
 
         // Check the obligation paid amount is correctly updated.
         val partiallySettledObligation = settleTransaction.tx.outputsOfType<Obligation>().single()
-        assert(partiallySettledObligation.paid == amountToSettle)
+        assertEquals(amountToSettle, partiallySettledObligation.paid)
 
         // Check cash has gone to the correct parties.
         val outputCash = settleTransaction.tx.outputsOfType<Cash.State>()
-        assert(outputCash.size == 2)       // Cash to b and change to a.
+        assertEquals(2, outputCash.size)       // Cash to b and change to a.
 
         val change = getCashOutputByOwner(outputCash, a)
-        assert(change.amount.withoutIssuer() == 1000.POUNDS)
+        assertEquals(1000.POUNDS, change.amount.withoutIssuer())
 
         val payment = getCashOutputByOwner(outputCash, b)
-        assert(payment.amount.withoutIssuer() == 500.POUNDS)
+        assertEquals(500.POUNDS, payment.amount.withoutIssuer())
     }
 
     @org.junit.Test
@@ -188,34 +189,34 @@ class SettleObligationTests : ObligationTests() {
         network.waitQuiescent()
 
         // Issue obligation.
-        val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = true)
+        val issuanceTransaction = issueObligation(a, b, 1000.POUNDS)
         network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as Obligation
 
         // Attempt settlement.
         val amountToSettle = 500.POUNDS
-        val settleTransaction = settleObligation(issuedObligation.linearId, a, amountToSettle, anonymous = true)
+        val settleTransaction = settleObligation(issuedObligation.linearId, a, amountToSettle)
         network.waitQuiescent()
-        assert(settleTransaction.tx.outputsOfType<Obligation>().size == 1)
+        assertEquals(1, settleTransaction.tx.outputsOfType<Obligation>().size)
 
         // Check both parties have the transaction.
         val aTx = a.services.validatedTransactions.getTransaction(settleTransaction.id)
         val bTx = b.services.validatedTransactions.getTransaction(settleTransaction.id)
-        kotlin.test.assertEquals(aTx, bTx)
+        assertEquals(aTx, bTx)
 
         // Check the obligation paid amount is correctly updated.
         val partiallySettledObligation = settleTransaction.tx.outputsOfType<Obligation>().single()
-        assert(partiallySettledObligation.paid == amountToSettle)
+        assertEquals(amountToSettle, partiallySettledObligation.paid)
 
         // Check cash has gone to the correct parties.
         val outputCash = settleTransaction.tx.outputsOfType<Cash.State>()
-        assert(outputCash.size == 2)       // Cash to b and change to a.
+        assertEquals(2, outputCash.size)       // Cash to b and change to a.
 
         val change = getCashOutputByOwner(outputCash, a)
-        assert(change.amount.withoutIssuer() == 1000.POUNDS)
+        assertEquals(1000.POUNDS, change.amount.withoutIssuer())
 
         val payment = getCashOutputByOwner(outputCash, b)
-        assert(payment.amount.withoutIssuer() == 500.POUNDS)
+        assertEquals(500.POUNDS, payment.amount.withoutIssuer())
     }
 
 }

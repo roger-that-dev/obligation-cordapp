@@ -33,12 +33,12 @@ class TransferObligationTests : ObligationTests() {
     @org.junit.Test
     fun `Transfer anonymous obligation successfully`() {
         // Issue obligation.
-        val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = true)
+        val issuanceTransaction = issueObligation(a, b, 1000.POUNDS)
         network.waitQuiescent()
         val issuedObligation = issuanceTransaction.tx.outputStates.first() as Obligation
 
         // Transfer obligation.
-        val transferTransaction = transferObligation(issuedObligation.linearId, b, c, anonymous = true)
+        val transferTransaction = transferObligation(issuedObligation.linearId, b, c)
         network.waitQuiescent()
         val transferredObligation = transferTransaction.tx.outputStates.first() as Obligation
 
