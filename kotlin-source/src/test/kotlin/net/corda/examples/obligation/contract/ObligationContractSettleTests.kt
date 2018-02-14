@@ -26,7 +26,7 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
     }
 
     @Test
-    fun mustIncludeSettleCommand() {
+    fun `must include settle command`() {
         val inputCash = createCashState(5.DOLLARS, bob.party)
         val outputCash = inputCash.withNewOwner(newOwner = alice.party).ownableState
         ledgerServices.ledger {
@@ -297,7 +297,7 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
                 command(bob.publicKey, cashPayment.command)
                 output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
                 command(listOf(alice.publicKey, charlie.publicKey), ObligationContract.Commands.Settle())
-                failsWith("Both lender and borrower together only must sign obligation settle transaction.")
+                this `fails with` "Both lender and borrower together only must sign obligation settle transaction."
             }
             transaction {
                 input(OBLIGATION_CONTRACT_ID, cash)
@@ -306,7 +306,7 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
                 command(bob.publicKey, cashPayment.command)
                 output(OBLIGATION_CONTRACT_ID, tenDollarObligation.pay(5.DOLLARS))
                 command(bob.publicKey, ObligationContract.Commands.Settle())
-                failsWith("Both lender and borrower together only must sign obligation settle transaction.")
+                this `fails with` "Both lender and borrower together only must sign obligation settle transaction."
             }
             transaction {
                 input(OBLIGATION_CONTRACT_ID, cash)
