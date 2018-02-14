@@ -75,7 +75,7 @@ abstract class ObligationTests {
                                 amount: Amount<Currency>): net.corda.core.transactions.SignedTransaction {
         val notary = party.services.networkMapCache.notaryIdentities.firstOrNull()
                 ?: throw IllegalStateException("Could not find a notary.")
-        val issueRef = OpaqueBytes.Companion.of(0)
+        val issueRef = OpaqueBytes.of(0)
         val issueRequest = CashIssueFlow.IssueRequest(amount, issueRef, notary)
         val flow = CashIssueFlow(issueRequest)
         return party.services.startFlow(flow).getOrThrow().stx

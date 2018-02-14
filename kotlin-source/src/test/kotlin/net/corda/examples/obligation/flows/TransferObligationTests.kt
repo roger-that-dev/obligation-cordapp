@@ -8,7 +8,7 @@ import org.jgroups.util.Util.assertEquals
 class TransferObligationTests : ObligationTests() {
 
     @org.junit.Test
-    fun `Transfer normal non-anonymous obligation successfully`() {
+    fun `Transfer non-anonymous obligation successfully`() {
         // Issue obligation.
         val issuanceTransaction = issueObligation(a, b, 1000.POUNDS, anonymous = false)
         network.waitQuiescent()

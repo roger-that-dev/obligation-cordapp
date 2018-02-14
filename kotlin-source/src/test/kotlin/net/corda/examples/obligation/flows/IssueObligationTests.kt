@@ -35,16 +35,16 @@ class IssueObligationTests : ObligationTests() {
 
         assertEquals(aObligation, bObligation)
 
-        val maybePartyAlookedUpByA = a.services.identityService.requireWellKnownPartyFromAnonymous(aObligation.borrower)
-        val maybePartyAlookedUpByB = b.services.identityService.requireWellKnownPartyFromAnonymous(aObligation.borrower)
+        val maybePartyALookedUpByA = a.services.identityService.requireWellKnownPartyFromAnonymous(aObligation.borrower)
+        val maybePartyALookedUpByB = b.services.identityService.requireWellKnownPartyFromAnonymous(aObligation.borrower)
 
-        assertEquals(aIdentity, maybePartyAlookedUpByA)
-        assertEquals(aIdentity, maybePartyAlookedUpByB)
+        assertEquals(aIdentity, maybePartyALookedUpByA)
+        assertEquals(aIdentity, maybePartyALookedUpByB)
 
-        val maybePartyClookedUpByA = a.services.identityService.requireWellKnownPartyFromAnonymous(aObligation.lender)
-        val maybePartyClookedUpByB = b.services.identityService.requireWellKnownPartyFromAnonymous(aObligation.lender)
+        val maybePartyCLookedUpByA = a.services.identityService.requireWellKnownPartyFromAnonymous(aObligation.lender)
+        val maybePartyCLookedUpByB = b.services.identityService.requireWellKnownPartyFromAnonymous(aObligation.lender)
 
-        assertEquals(bIdentity, maybePartyClookedUpByA)
-        assertEquals(bIdentity, maybePartyClookedUpByB)
+        assertEquals(bIdentity, maybePartyCLookedUpByA)
+        assertEquals(bIdentity, maybePartyCLookedUpByB)
     }
 }
