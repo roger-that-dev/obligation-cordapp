@@ -18,7 +18,7 @@ import static net.corda.examples.obligation.ObligationContract.OBLIGATION_CONTRA
 import static net.corda.finance.Currencies.*;
 import static net.corda.testing.node.NodeTestUtils.ledger;
 
-class ObligationContractSettleTests extends ObligationContractUnitTests {
+public class ObligationContractSettleTests extends ObligationContractUnitTests {
     private TestIdentity issuer = new TestIdentity(new CordaX500Name("MegaBank", "", "US"));
     private Byte defaultRef = Byte.MAX_VALUE;
     private PartyAndReference defaultIssuer = issuer.ref(defaultRef);

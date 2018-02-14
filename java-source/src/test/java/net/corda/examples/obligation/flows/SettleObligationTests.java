@@ -20,7 +20,7 @@ import static net.corda.testing.core.TestUtils.chooseIdentity;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 
-class SettleObligationTests extends ObligationTests {
+public class SettleObligationTests extends ObligationTests {
 
     // Helper for extracting the cash output owned by a the node.
     private Cash.State getCashOutputByOwner(

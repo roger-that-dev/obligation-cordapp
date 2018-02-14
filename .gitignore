@@ -27,10 +27,11 @@ lib/dokka.jar
 # if you remove the above rule, at least ignore the following:
 
 # Specific files to avoid churn
-.idea/*.xml
-.idea/inspectionProfiles
-.idea/copyright
-.idea/jsLibraryMappings.xml
+.idea/gradle.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
+.idea/workspace.xml
 
 # User-specific stuff:
 .idea/tasks.xml

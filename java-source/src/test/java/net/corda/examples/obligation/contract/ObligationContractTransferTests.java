@@ -12,7 +12,7 @@ import static net.corda.examples.obligation.ObligationContract.OBLIGATION_CONTRA
 import static net.corda.finance.Currencies.DOLLARS;
 import static net.corda.testing.node.NodeTestUtils.ledger;
 
-class ObligationContractTransferTests extends ObligationContractUnitTests {
+public class ObligationContractTransferTests extends ObligationContractUnitTests {
 
     @Test
     public void mustHandleMultipleCommandValues() {

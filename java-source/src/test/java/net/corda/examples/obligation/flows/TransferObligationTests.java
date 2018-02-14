@@ -11,7 +11,7 @@ import static net.corda.testing.core.TestUtils.chooseIdentity;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 
-class TransferObligationTests extends ObligationTests {
+public class TransferObligationTests extends ObligationTests {
 
     @Rule
     public final ExpectedException exception = ExpectedException.none();

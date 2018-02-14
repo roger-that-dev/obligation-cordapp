@@ -11,7 +11,7 @@ import static net.corda.examples.obligation.ObligationContract.OBLIGATION_CONTRA
 import static net.corda.finance.Currencies.*;
 import static net.corda.testing.node.NodeTestUtils.ledger;
 
-class ObligationContractIssueTests extends ObligationContractUnitTests {
+public class ObligationContractIssueTests extends ObligationContractUnitTests {
 
     @Test
     public void issueObligationTransactionMustHaveNoInputs() {
