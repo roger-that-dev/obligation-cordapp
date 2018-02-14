@@ -141,7 +141,7 @@ class SettleObligationTests : ObligationTests() {
         val change = getCashOutputByOwner(outputCash, a)
         assertEquals(1000.POUNDS, change.amount.withoutIssuer())
 
-        val payment = outputCash.filter { it.owner == b.info.chooseIdentity() }.single()
+        val payment = getCashOutputByOwner(outputCash, b)
         assertEquals(500.POUNDS, payment.amount.withoutIssuer())
     }
 

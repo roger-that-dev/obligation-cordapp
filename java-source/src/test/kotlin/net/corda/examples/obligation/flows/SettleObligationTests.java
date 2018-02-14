@@ -14,6 +14,7 @@ import org.junit.rules.ExpectedException;
 import java.util.Currency;
 import java.util.List;
 
+import static net.corda.core.contracts.Structures.withoutIssuer;
 import static net.corda.finance.Currencies.POUNDS;
 import static net.corda.testing.core.TestUtils.chooseIdentity;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -154,12 +155,10 @@ class SettleObligationTests extends ObligationTests {
 
         // Change addresses are always anonymous, I think.
         Cash.State change = getCashOutputByOwner(outputCash, a);
-        assertEquals(POUNDS(1000), change.getAmount().withoutIssuer());
+        assertEquals(POUNDS(1000), withoutIssuer(change.getAmount()));
 
-        Cash.State payment = outputCash.filter {
-            it.owner == b.info.chooseIdentity()
-        }.single();
-        assertEquals(POUNDS(500), payment.getAmount().withoutIssuer());
+        Cash.State payment = getCashOutputByOwner(outputCash, b);
+        assertEquals(POUNDS(500), withoutIssuer(payment.getAmount()));
     }
 
     @Test
@@ -193,10 +192,10 @@ class SettleObligationTests extends ObligationTests {
         assertEquals(2, outputCash.size());       // Cash to b and change to a.
 
         Cash.State change = getCashOutputByOwner(outputCash, a);
-        assertEquals(POUNDS(1000), change.getAmount().withoutIssuer());
+        assertEquals(POUNDS(1000), withoutIssuer(change.getAmount()));
 
         Cash.State payment = getCashOutputByOwner(outputCash, b);
-        assertEquals(POUNDS(500), payment.getAmount().withoutIssuer());
+        assertEquals(POUNDS(500), withoutIssuer(payment.getAmount()));
     }
 
     @Test
@@ -230,9 +229,9 @@ class SettleObligationTests extends ObligationTests {
         assertEquals(2, outputCash.size());       // Cash to b and change to a.
 
         Cash.State change = getCashOutputByOwner(outputCash, a);
-        assertEquals(POUNDS(1000), change.getAmount().withoutIssuer());
+        assertEquals(POUNDS(1000), withoutIssuer(change.getAmount()));
 
         Cash.State payment = getCashOutputByOwner(outputCash, b);
-        assertEquals(POUNDS(500), payment.getAmount().withoutIssuer());
+        assertEquals(POUNDS(500), withoutIssuer(payment.getAmount()));
     }
 }
