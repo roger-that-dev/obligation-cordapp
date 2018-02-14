@@ -54,7 +54,7 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
                 output(OBLIGATION_CONTRACT_ID, outputCash)
                 command(bob.publicKey, Cash.Commands.Move())
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle()) // Correct Type.
-                this.verifies()
+                verifies()
             }
         }
     }
@@ -86,7 +86,7 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
                 input(OBLIGATION_CONTRACT_ID, tenDollars)
                 output(OBLIGATION_CONTRACT_ID, tenDollars.withNewOwner(newOwner = alice.party).ownableState)
                 command(bob.publicKey, Cash.Commands.Move())
-                this.verifies()
+                verifies()
             }
         }
     }
@@ -109,7 +109,7 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
                 output(OBLIGATION_CONTRACT_ID, cashPayment.ownableState)
                 command(bob.publicKey, cashPayment.command)
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle())
-                this.verifies()
+                verifies()
             }
         }
     }
@@ -136,7 +136,7 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
                 output(OBLIGATION_CONTRACT_ID, validCashPayment.ownableState)
                 command(bob.publicKey, validCashPayment.command)
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle())
-                this.verifies()
+                verifies()
             }
         }
     }
@@ -163,7 +163,7 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
                 output(OBLIGATION_CONTRACT_ID, fiveDollars.withNewOwner(newOwner = alice.party).ownableState)
                 command(bob.publicKey, fiveDollars.withNewOwner(newOwner = alice.party).command)
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle())
-                this.verifies()
+                verifies()
             }
             transaction {
                 input(OBLIGATION_CONTRACT_ID, tenDollarObligation)
@@ -171,7 +171,7 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
                 output(OBLIGATION_CONTRACT_ID, tenDollars.withNewOwner(newOwner = alice.party).ownableState)
                 command(bob.publicKey, tenDollars.withNewOwner(newOwner = alice.party).command)
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle())
-                this.verifies()
+                verifies()
             }
         }
     }
@@ -195,7 +195,7 @@ class ObligationContractSettleTests : ObligationContractUnitTests() {
                 output(OBLIGATION_CONTRACT_ID, tenDollars.withNewOwner(newOwner = alice.party).ownableState)
                 command(bob.publicKey, tenDollars.withNewOwner(newOwner = alice.party).command)
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Settle())
-                this.verifies()
+                verifies()
             }
         }
     }

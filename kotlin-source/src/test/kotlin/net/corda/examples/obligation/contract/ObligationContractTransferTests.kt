@@ -23,13 +23,13 @@ class ObligationContractTransferTests : ObligationContractUnitTests() {
             transaction {
                 output(OBLIGATION_CONTRACT_ID, oneDollarObligation)
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Issue())
-                this.verifies()
+                verifies()
             }
             transaction {
                 input(OBLIGATION_CONTRACT_ID, oneDollarObligation)
                 output(OBLIGATION_CONTRACT_ID, oneDollarObligation.withNewLender(charlie.party))
                 command(listOf(alice.publicKey, bob.publicKey, charlie.publicKey), ObligationContract.Commands.Transfer())
-                this.verifies()
+                verifies()
             }
         }
     }
@@ -65,7 +65,7 @@ class ObligationContractTransferTests : ObligationContractUnitTests() {
                 input(OBLIGATION_CONTRACT_ID, oneDollarObligation)
                 output(OBLIGATION_CONTRACT_ID, oneDollarObligation.withNewLender(charlie.party))
                 command(listOf(alice.publicKey, bob.publicKey, charlie.publicKey), ObligationContract.Commands.Transfer())
-                this.verifies()
+                verifies()
             }
         }
     }
@@ -95,7 +95,7 @@ class ObligationContractTransferTests : ObligationContractUnitTests() {
                 input(OBLIGATION_CONTRACT_ID, oneDollarObligation)
                 output(OBLIGATION_CONTRACT_ID, oneDollarObligation.withNewLender(charlie.party))
                 command(listOf(alice.publicKey, bob.publicKey, charlie.publicKey), ObligationContract.Commands.Transfer())
-                this.verifies()
+                verifies()
             }
         }
     }
@@ -113,7 +113,7 @@ class ObligationContractTransferTests : ObligationContractUnitTests() {
                 input(OBLIGATION_CONTRACT_ID, oneDollarObligation)
                 output(OBLIGATION_CONTRACT_ID, oneDollarObligation.withNewLender(charlie.party))
                 command(listOf(alice.publicKey, bob.publicKey, charlie.publicKey), ObligationContract.Commands.Transfer())
-                this.verifies()
+                verifies()
             }
         }
     }
@@ -157,7 +157,7 @@ class ObligationContractTransferTests : ObligationContractUnitTests() {
                 input(OBLIGATION_CONTRACT_ID, oneDollarObligation)
                 output(OBLIGATION_CONTRACT_ID, oneDollarObligation.withNewLender(charlie.party))
                 command(listOf(alice.publicKey, bob.publicKey, charlie.publicKey), ObligationContract.Commands.Transfer())
-                this.verifies()
+                verifies()
             }
         }
     }

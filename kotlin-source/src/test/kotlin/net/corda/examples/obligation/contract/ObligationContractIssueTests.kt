@@ -25,7 +25,7 @@ class ObligationContractIssueTests : ObligationContractUnitTests() {
             transaction {
                 output(OBLIGATION_CONTRACT_ID, oneDollarObligation)
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Issue())
-                this.verifies() // As there are no input states.
+                verifies() // As there are no input states.
             }
         }
     }
@@ -42,7 +42,7 @@ class ObligationContractIssueTests : ObligationContractUnitTests() {
             transaction {
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Issue())
                 output(OBLIGATION_CONTRACT_ID, oneDollarObligation) // One output passes.
-                this.verifies()
+                verifies()
             }
         }
     }
@@ -58,17 +58,17 @@ class ObligationContractIssueTests : ObligationContractUnitTests() {
             transaction {
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Issue())
                 output(OBLIGATION_CONTRACT_ID, Obligation(100.SWISS_FRANCS, alice.party, bob.party))
-                this.verifies()
+                verifies()
             }
             transaction {
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Issue())
                 output(OBLIGATION_CONTRACT_ID, Obligation(1.POUNDS, alice.party, bob.party))
-                this.verifies()
+                verifies()
             }
             transaction {
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Issue())
                 output(OBLIGATION_CONTRACT_ID, Obligation(10.DOLLARS, alice.party, bob.party))
-                this.verifies()
+                verifies()
             }
         }
     }
@@ -106,12 +106,12 @@ class ObligationContractIssueTests : ObligationContractUnitTests() {
             transaction {
                 command(listOf(bob.publicKey, bob.publicKey, bob.publicKey, alice.publicKey), ObligationContract.Commands.Issue())
                 output(OBLIGATION_CONTRACT_ID, oneDollarObligation)
-                this.verifies()
+                verifies()
             }
             transaction {
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Issue())
                 output(OBLIGATION_CONTRACT_ID, oneDollarObligation)
-                this.verifies()
+                verifies()
             }
         }
     }
@@ -128,7 +128,7 @@ class ObligationContractIssueTests : ObligationContractUnitTests() {
             transaction {
                 command(listOf(alice.publicKey, bob.publicKey), ObligationContract.Commands.Issue())
                 output(OBLIGATION_CONTRACT_ID, oneDollarObligation)
-                this.verifies()
+                verifies()
             }
         }
     }
