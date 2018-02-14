@@ -24,8 +24,8 @@ class IntegrationTest {
             // started and can communicate. This is a very basic test, in practice tests would be starting flows,
             // and verifying the states in the vault and other important metrics to ensure that your CorDapp is working
             // as intended.
-            Assert.assertEquals(nodeAHandle.rpc.wellKnownPartyFromX500Name(nodeAName)!!.name, nodeAName)
-            Assert.assertEquals(nodeBHandle.rpc.wellKnownPartyFromX500Name(nodeBName)!!.name, nodeBName)
+            Assert.assertEquals(nodeAHandle.rpc.wellKnownPartyFromX500Name(nodeBName)!!.name, nodeBName)
+            Assert.assertEquals(nodeBHandle.rpc.wellKnownPartyFromX500Name(nodeAName)!!.name, nodeAName)
         }
     }
 }
