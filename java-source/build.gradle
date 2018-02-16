@@ -66,34 +66,42 @@ tasks.withType(JavaCompile) {
 task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
     directory "./build/nodes"
     node {
-        name "O=Controller,L=London,C=GB"
+        name "O=NetworkMapAndNotary,L=London,C=GB"
         notary = [validating : true]
         p2pPort 10002
-        rpcPort 10003
         cordapps = ["net.corda:corda-finance:$corda_release_version"]
     }
     node {
         name "O=PartyA,L=London,C=GB"
         p2pPort 10005
-        rpcPort 10006
+        rpcSettings {
+            address("localhost:10006")
+            adminAddress("localhost:10046")
+        }
         webPort 10007
         cordapps = ["net.corda:corda-finance:$corda_release_version"]
-        rpcUsers = [[ user: "user1", "password": "test", "permissions": []]]
+        rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
     }
     node {
         name "O=PartyB,L=New York,C=US"
         p2pPort 10008
-        rpcPort 10009
+        rpcSettings {
+            address("localhost:10009")
+            adminAddress("localhost:10049")
+        }
         webPort 10010
         cordapps = ["net.corda:corda-finance:$corda_release_version"]
-        rpcUsers = [[ user: "user1", "password": "test", "permissions": []]]
+        rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
     }
     node {
         name "O=PartyC,L=Paris,C=FR"
         p2pPort 10011
-        rpcPort 10012
+        rpcSettings {
+            address("localhost:10012")
+            adminAddress("localhost:10052")
+        }
         webPort 10013
         cordapps = ["net.corda:corda-finance:$corda_release_version"]
-        rpcUsers = [[ user: "user1", "password": "test", "permissions": []]]
+        rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
     }
 }
