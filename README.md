@@ -63,6 +63,8 @@ From the obligation borrowers UI:
 
 ## Settling an obligation
 
+In order to complete this step the borrower node should have some cash. See the previous step how to issue cash on the borrower's node.
+
 From the obligation borrowers UI:
 
 1. Click the "Settle" button for the obligation you previously just issued.
